@@ -1,3 +1,6 @@
+import * as Browser from 'bowser';
+
+
 export default class Environment {
   static get SERVICE_WORKER() {
     return 'ServiceWorker';
@@ -139,5 +142,10 @@ export default class Environment {
 
   static supportsServiceWorkers() {
     return 'serviceWorker' in navigator;
+  }
+
+  static supportsVapid() {
+    return (Browser.chrome && new Number(Browser.version) >= 52) ||
+           (Browser.firefox && new Number(Browser.version) >= 48);
   }
 }

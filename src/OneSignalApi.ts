@@ -126,4 +126,8 @@ export default class OneSignalApi {
     trimUndefined(params);
     return OneSignalApi.post('notifications', params);
   }
+
+  static getAppConfig(appId) : {vapid_public_key: string } {
+    return OneSignalApi.get(`webpush/${appId}/app_config`);
+  }
 }

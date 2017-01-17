@@ -510,7 +510,7 @@ class ServiceWorker {
    * Supported on: Chrome 50+ only
    */
   static onNotificationClosed(event) {
-    log.debug(`Called %conNotificationClosed(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
+    log.debug(`Called %con\NotificationClosed(${JSON.stringify(event, null, 4)}):`, getConsoleStyle('code'), event);
     let notification = event.notification.data;
 
     (swivel as any).broadcast('notification.dismissed', notification);
@@ -674,7 +674,7 @@ class ServiceWorker {
                                         .then(() => Database.get('Ids', 'userId'))
                                         .then(userId => {
                                           if (self.registration && userId) {
-                                            return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
+                                            //return ServiceWorker._subscribeForPush(self.registration).catch(e => log.error(e));
                                           }
                                         });
     event.waitUntil(activationPromise);
@@ -803,7 +803,7 @@ class ServiceWorker {
             requestData.identifier = subscriptionInfo.endpointOrToken;
             // Although we're passing the full endpoint to OneSignal, we still need to store only the registration ID for our SDK API getRegistrationId()
             // Parse out the registration ID from the full endpoint URL and save it to our database
-            let registrationId = subscriptionInfo.endpointOrToken.replace(new RegExp("^(https://android.googleapis.com/gcm/send/|https://updates.push.services.mozilla.com/push/)"), "");
+            const registrationId = subscriptionInfo.endpointOrToken.substring(subscriptionInfo.endpointOrToken.lastIndexOf('/') + 1);
             Database.put("Ids", {type: "registrationId", id: registrationId});
             // New web push standard in Firefox 46+ and Chrome 50+ includes 'auth' and 'p256dh' in PushSubscription
             if (subscriptionInfo.auth) {
@@ -943,7 +943,7 @@ class ServiceWorker {
                         Database.put('Ids', {type: 'userId', id: recoveredUserId}),
                         Database.put('Ids', {
                           type: 'registrationId',
-                          id: identifier.replace(new RegExp("^(https://android.googleapis.com/gcm/send/|https://updates.push.services.mozilla.com/push/)"), "")
+                          id: identifier.substring(identifier.lastIndexOf('/') + 1)
                         }),
                       ]).then(() => {
                         // Try getting the notification again

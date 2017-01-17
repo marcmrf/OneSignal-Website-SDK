@@ -18,4 +18,12 @@ export class Subscription {
      * Whether the user is opted out of notifications, set by setSubscription().
      */
     optedOut: boolean;
+    /**
+     * Web push payload encryption "auth" field.
+     */
+    cryptoAuth: string;
+    /**
+     * Web push payload encryption "p256dh" field.
+     */
+    cryptoP256dh: string;
 }

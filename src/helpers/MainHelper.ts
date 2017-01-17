@@ -20,6 +20,7 @@ import HttpModal from "../http-modal/HttpModal";
 import Bell from "../bell/Bell";
 import SubscriptionHelper from "./SubscriptionHelper";
 import EventHelper from "./EventHelper";
+import { Subscription } from "../models/Subscription";
 
 declare var OneSignal: any;
 
@@ -178,18 +179,18 @@ export default class MainHelper {
    *          If a user already exists and is subscribed, updates the session count by calling /players/:id/on_session; otherwise, a new player is registered via the /players endpoint.
    *          Saves the user ID and registration ID to the local web database after the response from OneSignal.
    */
-  static registerWithOneSignal(appId, subscriptionInfo) {
+  static registerWithOneSignal(appId, subscription: Subscription) {
     let deviceType = getDeviceTypeForBrowser();
     return Promise.all([
       OneSignal.getUserId(),
-      OneSignal.getSubscription()
+      OneSignal.isOptedOut()
     ])
-                  .then(([userId, subscription]) => {
+                  .then(([userId, isOptedOut]) => {
                     let requestUrl = userId ?
                       `players/${userId}/on_session` :
                       `players`;
 
-                    let requestData = {
+                    let registrationPayload = {
                       app_id: appId,
                       device_type: deviceType,
                       language: Environment.getLanguage(),
@@ -197,25 +198,21 @@ export default class MainHelper {
                       device_model: navigator.platform + " " + Browser.name,
                       device_os: Browser.version,
                       sdk: OneSignal._VERSION,
-                      notification_types: MainHelper.getNotificationTypeFromOptIn(subscription)
+                      notification_types: MainHelper.getNotificationTypeFromOptIn(!isOptedOut)
                     };
 
-                    if (subscriptionInfo) {
-                      (requestData as any).identifier = subscriptionInfo.endpointOrToken;
-                      // Although we're passing the full endpoint to OneSignal, we still need to store only the registration ID for our SDK API getRegistrationId()
-                      // Parse out the registration ID from the full endpoint URL and save it to our database
-                      let registrationId = subscriptionInfo.endpointOrToken.replace(new RegExp("^(https://android.googleapis.com/gcm/send/|https://updates.push.services.mozilla.com/push/)"), "");
-                      Database.put("Ids", {type: "registrationId", id: registrationId});
+                    if (subscription) {
+                      (registrationPayload as any).identifier = subscription.pushEndpoint;
                       // New web push standard in Firefox 46+ and Chrome 50+ includes 'auth' and 'p256dh' in PushSubscription
-                      if (subscriptionInfo.auth) {
-                        (requestData as any).web_auth = subscriptionInfo.auth;
+                      if (subscription.cryptoAuth) {
+                        (registrationPayload as any).web_auth = subscription.cryptoAuth;
                       }
-                      if (subscriptionInfo.p256dh) {
-                        (requestData as any).web_p256 = subscriptionInfo.p256dh;
+                      if (subscription.cryptoP256dh) {
+                        (registrationPayload as any).web_p256 = subscription.cryptoP256dh;
                       }
                     }
 
-                    return OneSignalApi.post(requestUrl, requestData);
+                    return OneSignalApi.post(requestUrl, registrationPayload);
                   })
                   .then((response: any) => {
                     let {id: userId} = response;
@@ -223,7 +220,7 @@ export default class MainHelper {
                     MainHelper.beginTemporaryBrowserSession();
 
                     if (userId) {
-                      return Database.put("Ids", {type: "userId", id: userId});
+                      return Database.put("Ids", {type: "userId", id: userId}).then(() => Database.setSubscription(subscription));
                     }
                   })
                   .then(() => {

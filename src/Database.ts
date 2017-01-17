@@ -146,18 +146,21 @@ export default class Database {
     config.subdomain = await Database.get<string>('Options', 'subdomain');
     config.autoRegister = await Database.get<boolean>('Options', 'autoRegister');
     config.serviceWorkerConfig = await Database.get<ServiceWorkerConfig>('Options', 'serviceWorkerConfig');
+    config.vapidPublicKey = await Database.get<string>('Options', 'vapidPublicKey');
     return config;
   }
 
   static async setAppConfig(appConfig: AppConfig) {
     if (appConfig.appId)
-      await Database.put('Ids', {type: 'appId', id: appConfig.appId})
+      await Database.put('Ids', {type: 'appId', id: appConfig.appId});
     if (appConfig.subdomain)
-      await Database.put('Options', {key: 'subdomain', value: appConfig.subdomain})
+      await Database.put('Options', {key: 'subdomain', value: appConfig.subdomain});
     if (appConfig.autoRegister)
-      await Database.put('Options', {key: 'autoRegister', value: appConfig.autoRegister})
+      await Database.put('Options', {key: 'autoRegister', value: appConfig.autoRegister});
     if (appConfig.serviceWorkerConfig)
-      await Database.put('Options', {key: 'serviceWorkerConfig', value: appConfig.serviceWorkerConfig})
+      await Database.put('Options', {key: 'serviceWorkerConfig', value: appConfig.serviceWorkerConfig});
+    if (appConfig.vapidPublicKey)
+      await Database.put('Options', {key: 'vapidPublicKey', value: appConfig.vapidPublicKey});
   }
 
   static async getAppState(): Promise<AppState> {
@@ -238,6 +241,8 @@ export default class Database {
     subscription.deviceId = await Database.get<Uuid>('Ids', 'userId');
     subscription.pushEndpoint = await Database.get<URL>('Options', 'subscriptionEndpoint');
     subscription.pushToken = await Database.get<string>('Ids', 'registrationId');
+    subscription.cryptoAuth = await Database.get<string>('Options', 'cryptoAuth');
+    subscription.cryptoP256dh = await Database.get<string>('Options', 'cryptoP256dh');
 
     // The preferred database key to store our subscription
     const dbOptedOut = await Database.get<boolean>('Options', 'optedOut');
@@ -259,13 +264,17 @@ export default class Database {
 
   static async setSubscription(subscription: Subscription) {
     if (subscription.deviceId)
-      await Database.put('Ids', {type: 'userId', id: subscription.deviceId});
+      await Database.put('Ids', { type: 'userId', id: subscription.deviceId });
     if (subscription.pushEndpoint)
-      await Database.put('Options', {key: 'subscriptionEndpoint', value: subscription.pushEndpoint});
+      await Database.put('Options', { key: 'subscriptionEndpoint', value: subscription.pushEndpoint });
     if (subscription.pushToken)
-      await Database.put('Ids', {type: 'registrationId', id: subscription.pushToken});
+      await Database.put('Ids', { type: 'registrationId', id: subscription.pushToken });
     if (subscription.optedOut != null) // Checks if null or undefined, allows false
-      await Database.put('Options', {key: 'optedOut', value: subscription.optedOut});
+      await Database.put('Options', { key: 'optedOut', value: subscription.optedOut })
+    if (subscription.cryptoAuth != null) // Checks if null or undefined, allows false
+      await Database.put('Options', { key: 'cryptoAuth', value: subscription.cryptoAuth });
+    if (subscription.cryptoP256dh != null) // Checks if null or undefined, allows false
+      await Database.put('Options', { key: 'cryptoP256dh', value: subscription.cryptoP256dh });
   }
 
   /**

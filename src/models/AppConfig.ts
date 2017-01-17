@@ -7,6 +7,7 @@ class AppConfig {
     subdomain: string;
     autoRegister: boolean;
     serviceWorkerConfig: ServiceWorkerConfig;
+    vapidPublicKey: string;
 }
 
 export { AppConfig };
