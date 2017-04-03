@@ -396,8 +396,23 @@ export default class OneSignal {
             });
             Event.trigger(OneSignal.EVENTS.PERMISSION_PROMPT_DISPLAYED);
           } else {
-            Event.trigger(OneSignal.EVENTS.TEST_WOULD_DISPLAY);
-            throw new InvalidStateError(InvalidStateReason.PushPermissionAlreadyGranted);
+            /*
+              Note: We're in the subdomain.onesignal.com iFrame environment in here.
+
+              If a developer uses the httpPermissionRequest native-style permission request, a user grants it, but then clears their browser data, they'll be unsubscribed,
+              IndexedDb will be empty, but notification permissions will stay granted. In this case, we want to still fire a notificationPermissionChange event, so that the
+              user can get the necessary signal to continue showing their custom modal.
+            */
+            OneSignal.isPushNotificationsEnabled().then(isPushEnabled => {
+              if (!isPushEnabled && window.Notification.permission === "granted") {
+                // Maybe their browser data was cleared; their push permission is granted but they're not subscribed
+                // Re-prompt them to subscribe
+                OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, {
+                  permission: 'granted',
+                  forceUpdatePermission: true
+                });
+              }
+            });
           }
         }
       }));

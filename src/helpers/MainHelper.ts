@@ -292,6 +292,12 @@ export default class MainHelper {
     }
   }
 
+  /*
+    This code kicks off the HTTP-only HTTP permission request (the native permission request prompting for permissions using an iFrame hack).
+    This is called after the SDK is initialized, instead of being from registerForPushNotifications();
+    After we show the permission request, the user listens to the notificationPermissionChange event to show their own custom modal if they
+    have one implemented, otherwises we'll display our own.
+  */
   static checkAndDoHttpPermissionRequest() {
     log.debug('Called %ccheckAndDoHttpPermissionRequest()', getConsoleStyle('code'));
     if (this.isUsingHttpPermissionRequest()) {
