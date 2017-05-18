@@ -1,5 +1,4 @@
 ///<reference path="../../typings/globals/service_worker_api/index.d.ts"/>
-import { DEV_HOST, DEV_FRAME_HOST, PROD_HOST, API_URL, STAGING_FRAME_HOST } from '../vars';
 import Environment from '../Environment'
 import OneSignalApi from '../OneSignalApi';
 import * as log from 'loglevel';
@@ -9,6 +8,8 @@ import * as swivel from 'swivel';
 import * as Browser from 'bowser';
 import {Notification} from "../models/Notification";
 import Database from '../services/Database';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
 
 declare var self: ServiceWorkerGlobalScope;
 
@@ -63,8 +64,8 @@ class ServiceWorker {
     return Database;
   }
 
-  static get apiUrl() {
-    return API_URL;
+  static get sdkEnvironment() {
+    return SdkEnvironment;
   }
 
   /**
@@ -116,7 +117,7 @@ class ServiceWorker {
    * @param data The message contents.
    */
   static onMessageReceived(context, data) {
-    log.debug(`%c${capitalize(Environment.getEnv())} ⬸ Host:`, getConsoleStyle('serviceworkermessage'), data, context);
+    log.debug(`%c${capitalize(SdkEnvironment.getWindowEnv().toString())} ⬸ Host:`, getConsoleStyle('serviceworkermessage'), data, context);
 
     if (!data) {
       log.debug('Returning from empty data message.');
@@ -284,9 +285,7 @@ class ServiceWorker {
       // Test if this window client is the HTTP subdomain iFrame pointing to subdomain.onesignal.com
       if (client.frameType && client.frameType === 'nested') {
         // Subdomain iFrames point to 'https://subdomain.onesignal.com...'
-        if ((Environment.isDev() && !contains(client.url, DEV_FRAME_HOST)) ||
-          !Environment.isDev() && !contains(client.url, '.onesignal.com') ||
-          Environment.isStaging() && !contains(client.url, STAGING_FRAME_HOST)) {
+        if (!contains(client.url, SdkEnvironment.getOneSignalApiUrl().host)) {
           continue;
         }
         // Indicates this window client is an HTTP subdomain iFrame
@@ -438,6 +437,7 @@ class ServiceWorker {
              replace each other.
              */
             tag: extra.tag,
+            badge: 'https://onesignal.com/images.notification_logo.png',
             /*
              On Chrome 47+ (desktop), notifications will be dismissed after 20 seconds unless requireInteraction
              is set to true. See:
@@ -1042,7 +1042,7 @@ class ServiceWorker {
           }
           if (notifications.length == 0) {
             log.warn('OneSignal Worker: Received a GCM push signal, but there were no messages to retrieve. Are you' +
-                ' using the wrong API URL?', API_URL);
+                ' using the wrong API URL?', SdkEnvironment.getOneSignalApiUrl().toString());
           }
           resolve(notifications);
         });
@@ -1059,10 +1059,10 @@ if (typeof self === "undefined" &&
 }
 
 // Set logging to the appropriate level
-log.setDefaultLevel(Environment.isDev() ? (log as any).levels.TRACE : (log as any).levels.ERROR);
+log.setDefaultLevel(SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Development ? (log as any).levels.TRACE : (log as any).levels.ERROR);
 
 // Print it's happy time!
-log.info(`%cOneSignal Service Worker loaded (version ${Environment.version()}, ${Environment.getEnv()} environment).`, getConsoleStyle('bold'));
+log.info(`%cOneSignal Service Worker loaded (version ${Environment.version()}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
 
 // Run our main file
 if (typeof self !== "undefined") {

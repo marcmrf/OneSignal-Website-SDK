@@ -9,6 +9,8 @@ import ServiceWorkerHelper from "./ServiceWorkerHelper";
 import EventHelper from "./EventHelper";
 import PushPermissionNotGrantedError from "../errors/PushPermissionNotGrantedError";
 import TestHelper from "./TestHelper";
+import SdkEnvironment from "../managers/SdkEnvironment";
+import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
 
 
 export default class SubscriptionHelper {
@@ -115,7 +117,7 @@ export default class SubscriptionHelper {
    */
   static isUsingSubscriptionWorkaround() {
     if (!OneSignal.config) {
-      throw new Error(`(${Environment.getEnv()}) isUsingSubscriptionWorkaround() cannot be called until OneSignal.config exists.`);
+      throw new Error(`(${SdkEnvironment.getWindowEnv().toString()}) isUsingSubscriptionWorkaround() cannot be called until OneSignal.config exists.`);
     }
     if (Browser.safari) {
       return false;
@@ -127,7 +129,7 @@ export default class SubscriptionHelper {
       return false;
     }
 
-    return (Environment.isHost() &&
+    return ((SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.Host) &&
     (!!OneSignal.config.subdomainName || location.protocol === 'http:'));
   }
 

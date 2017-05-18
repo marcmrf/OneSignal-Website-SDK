@@ -5,6 +5,8 @@ import Environment from "./Environment";
 import Database from "./services/Database";
 import PushNotSupportedError from "./errors/PushNotSupportedError";
 import SubscriptionHelper from "./helpers/SubscriptionHelper";
+import SdkEnvironment from "./managers/SdkEnvironment";
+import { WindowEnvironmentKind } from "./models/WindowEnvironmentKind";
 
 
 export function isArray(variable) {
@@ -280,21 +282,6 @@ export function when(condition, promiseIfTrue, promiseIfFalse) {
   return (condition ? promiseIfTrue : promiseIfFalse);
 }
 
-export function guid() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var crypto = typeof window === "undefined" ? (global as any).crypto : (window.crypto || (<any>window).msCrypto);
-    if (crypto) {
-      var r = crypto.getRandomValues(new Uint8Array(1))[0] % 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-      return v.toString(16);
-    } else {
-      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
-        return v.toString(16);
-      });
-    }
-  });
-}
-
 /**
  * Returns true if match is in string; otherwise, returns false.
  */
@@ -385,7 +372,7 @@ export function capitalize(text): string {
  */
 export function unsubscribeFromPush() {
   log.warn('OneSignal: Unsubscribing from push.');
-  if (Environment.isServiceWorker()) {
+  if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker) {
     return (<any>self).registration.pushManager.getSubscription()
                        .then(subscription => {
                          if (subscription) {
@@ -427,7 +414,7 @@ export function unsubscribeFromPush() {
  */
 export function wipeServiceWorker() {
   log.warn('OneSignal: Unregistering service worker.');
-  if (Environment.isIframe()) {
+  if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame) {
     return;
   }
   if (!navigator.serviceWorker || !navigator.serviceWorker.controller)

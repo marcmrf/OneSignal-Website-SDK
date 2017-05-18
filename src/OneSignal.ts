@@ -1,4 +1,3 @@
-import {DEV_FRAME_HOST, API_URL, STAGING_FRAME_HOST} from "./vars";
 import Environment from "./Environment";
 import OneSignalApi from "./OneSignalApi";
 import IndexedDb from "./services/IndexedDb";
@@ -47,6 +46,9 @@ import {PermissionPromptType} from "./models/PermissionPromptType";
 import {Notification} from "./models/Notification";
 import Context from "./models/Context";
 import { DynamicResourceLoader, ResourceLoadState } from "./services/DynamicResourceLoader";
+import SdkEnvironment from './managers/SdkEnvironment';
+import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
+import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 
 
 export default class OneSignal {
@@ -164,21 +166,20 @@ export default class OneSignal {
           return;
         }
 
-        if (Environment.isDev()) {
-          OneSignal.iframeUrl = `${DEV_FRAME_HOST}/webPushIframe`;
-          OneSignal.popupUrl = `${DEV_FRAME_HOST}/subscribe`;
-        }
-        else {
+        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
           OneSignal.iframeUrl = `https://${OneSignal.config.subdomainName}.onesignal.com/webPushIframe`;
           OneSignal.popupUrl = `https://${OneSignal.config.subdomainName}.onesignal.com/subscribe`;
         }
+        else {
+          OneSignal.iframeUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/webPushIframe`;
+          OneSignal.popupUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/subscribe`;
+        }
       } else {
-        if (Environment.isDev()) {
-          OneSignal.modalUrl = `${DEV_FRAME_HOST}/webPushModal`;
-        } else if (Environment.isStaging()) {
-          OneSignal.modalUrl = `${STAGING_FRAME_HOST}/webPushModal`;
-        } else {
+        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
           OneSignal.modalUrl = `https://onesignal.com/webPushModal`;
+        }
+        else {
+          OneSignal.modalUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/webPushModal`;
         }
       }
 
@@ -207,7 +208,7 @@ export default class OneSignal {
         InitHelper.initSaveState()
           .then(() => InitHelper.saveInitOptions())
           .then(() => {
-            if (Environment.isCustomSubdomain()) {
+            if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.CustomIframe) {
               Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
             } else {
               InitHelper.internalInit();
@@ -410,7 +411,7 @@ export default class OneSignal {
       const notificationPermission = await OneSignal.getNotificationPermission();
 
       if (notificationPermission === NotificationPermission.Default) {
-        log.debug(`(${Environment.getEnv()}) Showing HTTP permission request.`);
+        log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Showing HTTP permission request.`);
         OneSignal._showingHttpPermissionRequest = true;
         return await new Promise((resolve, reject) => {
           window.Notification.requestPermission(permission => {
@@ -588,7 +589,7 @@ export default class OneSignal {
 
     if (Environment.supportsServiceWorkers() &&
         !SubscriptionHelper.isUsingSubscriptionWorkaround() &&
-        !Environment.isIframe() &&
+        SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.OneSignalProxyFrame &&
         !hasInsecureParentOrigin) {
 
       const serviceWorkerActive = await ServiceWorkerHelper.isServiceWorkerActive();
@@ -760,7 +761,7 @@ export default class OneSignal {
   static __doNotShowWelcomeNotification: boolean;
   static VERSION = Environment.version();
   static _VERSION = Environment.version();
-  static _API_URL = API_URL;
+  static sdkEnvironment = SdkEnvironment;
   static _notificationOpenedCallbacks = [];
   static _idsAvailable_callback = [];
   static _defaultLaunchURL = null;
@@ -983,6 +984,6 @@ else {
   log.setDefaultLevel((<any>log).levels.WARN);
 }
 
-log.info(`%cOneSignal Web SDK loaded (version ${OneSignal._VERSION}, ${Environment.getEnv()} environment).`, getConsoleStyle('bold'));
+log.info(`%cOneSignal Web SDK loaded (version ${OneSignal._VERSION}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
 log.debug(`Current Page URL: ${typeof location === "undefined" ? "NodeJS" : location.href}`);
 log.debug(`Browser Environment: ${Browser.name} ${Browser.version}`);

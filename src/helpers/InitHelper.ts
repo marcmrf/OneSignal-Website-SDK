@@ -1,4 +1,3 @@
-import {DEV_FRAME_HOST} from "../vars";
 import Environment from "../Environment";
 import * as log from "loglevel";
 import LimitStore from "../LimitStore";
@@ -15,6 +14,10 @@ import {InvalidStateError, InvalidStateReason} from "../errors/InvalidStateError
 import AlreadySubscribedError from "../errors/AlreadySubscribedError";
 import ServiceUnavailableError from "../errors/ServiceUnavailableError";
 import PermissionMessageDismissedError from '../errors/PermissionMessageDismissedError';
+import OneSignalApi from "../OneSignalApi";
+import { Uuid } from '../models/Uuid';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
 
 declare var OneSignal: any;
 
@@ -64,7 +67,7 @@ export default class InitHelper {
             })
             .catch(e => {
               if (e.code === 9) { // Only secure origins are allowed
-                if (location.protocol === 'http:' || Environment.isIframe()) {
+                if (location.protocol === 'http:' || SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame) {
                   // This site is an HTTP site with an <iframe>
                   // We can no longer register service workers since Chrome 42
                   log.debug(`Expected error getting service worker registration on ${location.href}:`, e);
@@ -101,7 +104,7 @@ export default class InitHelper {
        registerWithOneSignal(). Without this call, the user's session and last_active is not updated. We only
        do this if the user is actually registered with OneSignal though.
        */
-      log.debug(`(${Environment.getEnv()}) Updating session info for HTTP site.`);
+      log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Updating session info for HTTP site.`);
       OneSignal.isPushNotificationsEnabled(isPushEnabled => {
         if (isPushEnabled) {
           return MainHelper.getAppId()
@@ -174,59 +177,57 @@ export default class InitHelper {
     return Promise.all(opPromises);
   }
 
-  static internalInit() {
+  static async internalInit() {
     log.debug('Called %cinternalInit()', getConsoleStyle('code'));
-    Database.get('Ids', 'appId')
-            .then(appId => {
-              // HTTPS - Only register for push notifications once per session or if the user changes notification permission to Ask or Allow.
-              if (sessionStorage.getItem("ONE_SIGNAL_SESSION")
-                && !OneSignal.config.subdomainName
-                && (window.Notification.permission == "denied"
-                || sessionStorage.getItem("ONE_SIGNAL_NOTIFICATION_PERMISSION") == window.Notification.permission)) {
-                Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
-                return;
-              }
+    const appId = await Database.get<string>('Ids', 'appId');
 
-              sessionStorage.setItem("ONE_SIGNAL_NOTIFICATION_PERMISSION", window.Notification.permission);
+    // HTTPS - Only register for push notifications once per session or if the user changes notification permission to Ask or Allow.
+    if (sessionStorage.getItem("ONE_SIGNAL_SESSION")
+      && !OneSignal.config.subdomainName
+      && (window.Notification.permission == "denied"
+      || sessionStorage.getItem("ONE_SIGNAL_NOTIFICATION_PERMISSION") == window.Notification.permission)) {
+      Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+      return;
+    }
 
-              if (Browser.safari && OneSignal.config.autoRegister === false) {
-                log.debug('On Safari and autoregister is false, skipping sessionInit().');
-                // This *seems* to trigger on either Safari's autoregister false or Chrome HTTP
-                // Chrome HTTP gets an SDK_INITIALIZED event from the iFrame postMessage, so don't call it here
-                if (!SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-                  Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
-                }
-                return;
-              }
+    sessionStorage.setItem("ONE_SIGNAL_NOTIFICATION_PERMISSION", window.Notification.permission);
 
-              if (OneSignal.config.autoRegister === false && !OneSignal.config.subdomainName) {
-                log.debug('Skipping internal init. Not auto-registering and no subdomain.');
-                /* 3/25: If a user is already registered, re-register them in case the clicked Blocked and then Allow (which immediately invalidates the GCM token as soon as you click Blocked) */
-                OneSignal.isPushNotificationsEnabled().then(isPushEnabled => {
-                  if (isPushEnabled && !SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-                    log.info('Because the user is already subscribed and has enabled notifications, we will re-register their GCM token.');
-                    // Resubscribes them, and in case their GCM registration token was invalid, gets a new one
-                    SubscriptionHelper.registerForW3CPush({});
-                  } else {
-                    ServiceWorkerHelper.updateServiceWorker();
-                  }
-                });
-                Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
-                return;
-              }
+    if (Browser.safari && OneSignal.config.autoRegister === false) {
+      log.debug('On Safari and autoregister is false, skipping sessionInit().');
+      // This *seems* to trigger on either Safari's autoregister false or Chrome HTTP
+      // Chrome HTTP gets an SDK_INITIALIZED event from the iFrame postMessage, so don't call it here
+      if (!SubscriptionHelper.isUsingSubscriptionWorkaround()) {
+        Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+      }
+      return;
+    }
 
-              if (document.visibilityState !== "visible") {
-                once(document, 'visibilitychange', (e, destroyEventListener) => {
-                  if (document.visibilityState === 'visible') {
-                    destroyEventListener();
-                    InitHelper.sessionInit({__sdkCall: true});
-                  }
-                }, true);
-                return;
-              }
+    if (OneSignal.config.autoRegister === false && !OneSignal.config.subdomainName) {
+      log.debug('Skipping internal init. Not auto-registering and no subdomain.');
+      /* 3/25: If a user is already registered, re-register them in case the clicked Blocked and then Allow (which immediately invalidates the GCM token as soon as you click Blocked) */
+      const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
+      if (isPushEnabled && !SubscriptionHelper.isUsingSubscriptionWorkaround()) {
+        log.info('Because the user is already subscribed and has enabled notifications, we will re-register their GCM token.');
+        // Resubscribes them, and in case their GCM registration token was invalid, gets a new one
+        SubscriptionHelper.registerForW3CPush({});
+      } else {
+        ServiceWorkerHelper.updateServiceWorker();
+      }
+      Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+      return;
+    }
 
-              InitHelper.sessionInit({__sdkCall: true});
-            });
+    if (document.visibilityState !== "visible") {
+      once(document, 'visibilitychange', (e, destroyEventListener) => {
+        if (document.visibilityState === 'visible') {
+          destroyEventListener();
+          InitHelper.sessionInit({__sdkCall: true});
+        }
+      }, true);
+      return;
+    }
+
+    InitHelper.sessionInit({__sdkCall: true});
   }
 
   static async initSaveState() {
@@ -253,7 +254,7 @@ export default class InitHelper {
         MainHelper.getAppId()
                  .then(appId => {
                    window.safari.pushNotification.requestPermission(
-                     `${OneSignal._API_URL}safari`,
+                     `${SdkEnvironment.getOneSignalApiUrl().toString()}/safari`,
                      OneSignal.config.safari_web_id,
                      {app_id: appId},
                      pushResponse => {
@@ -285,10 +286,7 @@ export default class InitHelper {
                log.info('Opening HTTPS modal prompt:', modalUrl);
                let modal = MainHelper.createHiddenSubscriptionDomModal(modalUrl);
 
-               let sendToOrigin = `https://onesignal.com`;
-               if (Environment.isDev()) {
-                 sendToOrigin = DEV_FRAME_HOST;
-               }
+               var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
                let receiveFromOrigin = sendToOrigin;
                OneSignal.modalPostmam = new Postmam(modal, sendToOrigin, receiveFromOrigin);
                OneSignal.modalPostmam.startPostMessageReceive();

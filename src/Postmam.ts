@@ -1,10 +1,11 @@
-import { guid, contains } from './utils';
+import { contains } from './utils';
 import * as EventEmitter from 'wolfy87-eventemitter';
 import * as heir from 'heir';
 import Environment from './Environment';
-import { DEV_FRAME_HOST, STAGING_FRAME_HOST } from './vars';
 import * as objectAssign from 'object-assign';
 import * as log from 'loglevel';
+import { Uuid } from './models/Uuid';
+import SdkEnvironment from "./managers/SdkEnvironment";
 
 
 
@@ -88,7 +89,7 @@ export default class Postmam {
       // log.debug(`(Postmam) Discarding message because ${e.origin} is not an allowed origin:`, e.data)
       return;
     }
-    //log.debug(`(Postmam) (onWindowPostMessageReceived) (${Environment.getEnv()}):`, e);
+    //log.debug(`(Postmam) (onWindowPostMessageReceived) (${SdkEnvironment.getWindowEnv().toString()}):`, e);
     let { id: messageId, command: messageCommand, data: messageData, source: messageSource } = e.data;
     if (messageCommand === Postmam.CONNECTED_MESSAGE) {
       (this as any).emit('connect');
@@ -117,7 +118,7 @@ export default class Postmam {
   }
 
   onWindowMessagePostmanConnectReceived(e) {
-    log.trace(`(Postmam) (${Environment.getEnv()}) Window postmessage for Postman connect received:`, e);
+    log.trace(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Window postmessage for Postman connect received:`, e);
     // Discard messages from unexpected origins; messages come frequently from other origins
     if (!this.isSafeOrigin(e.origin)) {
       // log.debug(`(Postmam) Discarding message because ${e.origin} is not an allowed origin:`, e.data)
@@ -139,7 +140,7 @@ export default class Postmam {
       log.info('(Postmam) Removed previous message event listener for handshakes, replaced with main message listener.');
       this.messagePort.start();
       this.isConnected = true;
-      log.info(`(Postmam) (${Environment.getEnv()}) Connected.`);
+      log.info(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Connected.`);
       this.message(Postmam.CONNECTED_MESSAGE);
       (this as any).emit('connect');
     }
@@ -150,7 +151,7 @@ export default class Postmam {
    * @remarks Only call this if listen() is called on another page.
    */
   connect() {
-    log.info(`(Postmam) (${Environment.getEnv()}) Establishing a connection to ${this.sendToOrigin}.`);
+    log.info(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Establishing a connection to ${this.sendToOrigin}.`);
     this.messagePort = this.channel.port1;
     this.messagePort.addEventListener('message', this.onMessageReceived.bind(this), false);
     this.messagePort.start();
@@ -160,9 +161,9 @@ export default class Postmam {
   }
 
   onMessageReceived(e) {
-    //log.debug(`(Postmam) (${Environment.getEnv()}):`, e.data);
+    //log.debug(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}):`, e.data);
     if (!e.data) {
-      log.debug(`(${Environment.getEnv()}) Received an empty Postmam message:`, e);
+      log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Received an empty Postmam message:`, e);
       return;
     }
     let { id: messageId, command: messageCommand, data: messageData, source: messageSource } = e.data;
@@ -196,7 +197,7 @@ export default class Postmam {
       id: originalMessageBundle.id,
       command: originalMessageBundle.command,
       data: data,
-      source: Environment.getEnv(),
+      source: SdkEnvironment.getWindowEnv().toString(),
       isReply: true
     };
     if (typeof onReply === 'function') {
@@ -217,10 +218,10 @@ export default class Postmam {
       return;
     }
     const messageBundle = {
-      id: guid(),
+      id: Uuid.generate(),
       command: command,
       data: data,
-      source: Environment.getEnv()
+      source: SdkEnvironment.getWindowEnv().toString()
     };
     if (typeof onReply === 'function') {
       this.replies[messageBundle.id] = onReply;
@@ -240,10 +241,10 @@ export default class Postmam {
       return;
     }
     const messageBundle = {
-      id: guid(),
+      id: Uuid.generate(),
       command: command,
       data: data,
-      source: Environment.getEnv()
+      source: SdkEnvironment.getWindowEnv().toString()
     };
     if (typeof onReply === 'function') {
       this.replies[messageBundle.id] = onReply;
@@ -288,8 +289,7 @@ export default class Postmam {
     return (// messageOrigin === '' || TODO: See if messageOrigin can be blank
             messageOrigin === 'https://onesignal.com' ||
             messageOrigin === `https://${subdomain || ''}.onesignal.com` ||
-            (Environment.isDev() && messageOrigin === DEV_FRAME_HOST) ||
-            (Environment.isStaging() && messageOrigin === STAGING_FRAME_HOST) ||
+            (messageOrigin === SdkEnvironment.getOneSignalApiUrl().origin) ||
             this.receiveFromOrigin === '*' ||
             contains(otherAllowedOrigins, messageOrigin));
   }

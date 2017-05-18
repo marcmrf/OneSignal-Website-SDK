@@ -1,4 +1,3 @@
-import { DEV_HOST, DEV_FRAME_HOST, PROD_HOST, API_URL, STAGING_FRAME_HOST, DEV_PREFIX, STAGING_PREFIX } from '../vars';
 import Environment from '../Environment';
 import OneSignalApi from '../OneSignalApi';
 import * as log from 'loglevel';
@@ -60,7 +59,7 @@ export default class TestHelper {
       });
     }
     let dismissCount = await Database.get<number>('Options', 'promptDismissCount');
-    console.log(`(${Environment.getEnv()}) dismissCount: ${dismissCount}`)
+    console.log(`(${SdkEnvironment.getWindowEnv().toString()}) dismissCount: ${dismissCount}`)
     if (!dismissCount) {
       dismissCount = 0;
     }
@@ -77,7 +76,7 @@ export default class TestHelper {
     } else if (dismissCount > 2) {
       dismissDays = 30;
     }
-    log.debug(`(${Environment.getEnv()}) OneSignal: User dismissed the native notification prompt; reprompt after ${dismissDays} days.`);
+    log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) OneSignal: User dismissed the native notification prompt; reprompt after ${dismissDays} days.`);
     await Database.put('Options', { key: 'promptDismissCount', value: dismissCount });
     return Cookie.set('onesignal-notification-prompt', 'dismissed', {
       // In 8 hours, or 1/3 of the day

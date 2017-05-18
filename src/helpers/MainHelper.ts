@@ -1,4 +1,3 @@
-import {DEV_PREFIX, STAGING_PREFIX} from "../vars";
 import Environment from "../Environment";
 import OneSignalApi from "../OneSignalApi";
 import * as log from "loglevel";
@@ -23,6 +22,8 @@ import EventHelper from "./EventHelper";
 import InitHelper from "./InitHelper";
 import { InvalidStateReason, InvalidStateError } from "../errors/InvalidStateError";
 import { ResourceLoadState } from "../services/DynamicResourceLoader";
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 
 
 export default class MainHelper {
@@ -108,7 +109,7 @@ export default class MainHelper {
   static beginTemporaryBrowserSession() {
     log.debug('OneSignal: Marking browser session as continuing.');
     sessionStorage.setItem("ONE_SIGNAL_SESSION", "true");
-    if (Environment.isPopup()) {
+    if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
       // If we're setting sessionStorage and we're in an Popup, we need to also set sessionStorage on the
       // main page
       if (!OneSignal.popupPostmam) {
@@ -124,8 +125,8 @@ export default class MainHelper {
   static isUsingHttpPermissionRequest() {
     return OneSignal.config.httpPermissionRequest &&
       OneSignal.config.httpPermissionRequest.enable == true &&
-      (Environment.isIframe() ||
-      Environment.isHost() && SubscriptionHelper.isUsingSubscriptionWorkaround());
+      (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame ||
+      SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.Host && SubscriptionHelper.isUsingSubscriptionWorkaround());
   }
 
   /**
@@ -290,13 +291,8 @@ export default class MainHelper {
   }
 
   static getPrefixedServiceWorkerNameForEnv() {
-    if (Environment.isDev()) {
-      OneSignal.SERVICE_WORKER_PATH = DEV_PREFIX + 'OneSignalSDKWorker.js';
-      OneSignal.SERVICE_WORKER_UPDATER_PATH = DEV_PREFIX + 'OneSignalSDKUpdaterWorker.js';
-    } else if (Environment.isStaging()) {
-      OneSignal.SERVICE_WORKER_PATH = STAGING_PREFIX + 'OneSignalSDKWorker.js';
-      OneSignal.SERVICE_WORKER_UPDATER_PATH = STAGING_PREFIX + 'OneSignalSDKUpdaterWorker.js';
-    }
+      OneSignal.SERVICE_WORKER_PATH = SdkEnvironment.getBuildEnvPrefix() + 'OneSignalSDKWorker.js';
+      OneSignal.SERVICE_WORKER_UPDATER_PATH = SdkEnvironment.getBuildEnvPrefix() + 'OneSignalSDKUpdaterWorker.js';
   }
 
   static checkAndDoHttpPermissionRequest() {
@@ -321,7 +317,7 @@ export default class MainHelper {
     if (!appId) {
       throw new InvalidStateError(InvalidStateReason.MissingAppId);
     }
-    var url = `${OneSignal._API_URL}apps/${appId}/icon`;
+    var url = `${SdkEnvironment.getOneSignalApiUrl().toString()}/apps/${appId}/icon`;
     const response = await fetch(url);
     const data = await response.json();
     if (data.errors) {
@@ -339,7 +335,7 @@ export default class MainHelper {
     }
     OneSignal._channel = (swivel as any).at(serviceWorkerRegistration ? serviceWorkerRegistration.active : null);
     OneSignal._channel.on('data', function handler(context, data) {
-      log.debug(`%c${capitalize(Environment.getEnv())} ⬸ ServiceWorker:`, getConsoleStyle('serviceworkermessage'), data, context);
+      log.debug(`%c${capitalize(SdkEnvironment.getWindowEnv().toString())} ⬸ ServiceWorker:`, getConsoleStyle('serviceworkermessage'), data, context);
     });
     OneSignal._channel.on('notification.displayed', function handler(context, data) {
       Event.trigger(OneSignal.EVENTS.NOTIFICATION_DISPLAYED, data);
@@ -369,7 +365,7 @@ export default class MainHelper {
       }
     });
     OneSignal._channel.on('command.redirect', function handler(context, data) {
-      log.debug(`${Environment.getEnv()} Picked up command.redirect to ${data}, forwarding to host page.`, OneSignal.iframePostmam);
+      log.debug(`${SdkEnvironment.getWindowEnv().toString()} Picked up command.redirect to ${data}, forwarding to host page.`, OneSignal.iframePostmam);
       if (OneSignal.iframePostmam) {
         OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, data);
       }

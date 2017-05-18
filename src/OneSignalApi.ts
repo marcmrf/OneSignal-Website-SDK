@@ -1,9 +1,10 @@
-import {API_URL} from "./vars";
 import * as log from "loglevel";
 import {contains, trimUndefined} from "./utils";
 import {Uuid} from "./models/Uuid";
 import * as objectAssign from "object-assign";
 import Environment from "./Environment";
+import { AppConfig } from "./models/AppConfig";
+import SdkEnvironment from "./managers/SdkEnvironment";
 
 
 export default class OneSignalApi {
@@ -43,7 +44,7 @@ export default class OneSignalApi {
       (contents as any).body = JSON.stringify(data);
 
     var status;
-    return fetch(API_URL + action, contents)
+    return fetch(SdkEnvironment.getOneSignalApiUrl().toString() + '/' + action, contents)
         .then(response => {
           status = response.status;
           return response.json();
@@ -125,5 +126,14 @@ export default class OneSignalApi {
     }
     trimUndefined(params);
     return OneSignalApi.post('notifications', params);
+  }
+
+  static async getAppConfig(appId: Uuid): Promise<AppConfig> {
+    const {
+      use_legacy_domain: useLegacyDomain
+    } = await OneSignalApi.get(`webpush/${appId.value}/config`);
+    const config = new AppConfig();
+    config.useLegacyDomain = useLegacyDomain;
+    return config;
   }
 }

@@ -1,4 +1,3 @@
-import {DEV_FRAME_HOST, STAGING_FRAME_HOST} from "../vars";
 import Environment from "../Environment";
 import * as log from "loglevel";
 import Event from "../Event";
@@ -17,6 +16,9 @@ import EventHelper from "./EventHelper";
 import SubscriptionHelper from "./SubscriptionHelper";
 import { InvalidStateReason } from "../errors/InvalidStateError";
 import TestHelper from './TestHelper';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { BuildEnvironmentKind } from "../models/BuildEnvironmentKind";
+import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
 
 declare var OneSignal: any;
 
@@ -59,13 +61,13 @@ must be opened as a result of a subscription call.</span>`);
     let preinitializePromise = Promise.resolve();
 
     OneSignal._thisIsThePopup = options.isPopup;
-    if (Environment.isPopup() || OneSignal._thisIsThePopup) {
+    if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup || OneSignal._thisIsThePopup) {
       OneSignal.popupPostmam = new Postmam(window.opener, sendToOrigin, receiveFromOrigin);
       // The host page will receive this event, and then call connect()
       OneSignal.popupPostmam.postMessage(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, null);
       OneSignal.popupPostmam.listen();
       OneSignal.popupPostmam.on('connect', e => {
-        log.debug(`(${Environment.getEnv()}) The host page is now ready to receive commands from the HTTP popup.`);
+        log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) The host page is now ready to receive commands from the HTTP popup.`);
         Event.trigger('httpInitialize');
       });
     }
@@ -78,7 +80,7 @@ must be opened as a result of a subscription call.</span>`);
     OneSignal.iframePostmam = new Postmam(window, sendToOrigin, receiveFromOrigin);
     OneSignal.iframePostmam.listen();
     OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.CONNECTED, e => {
-      log.debug(`(${Environment.getEnv()}) Fired Postmam connect event!`);
+      log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Fired Postmam connect event!`);
     });
     OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, message => {
       OneSignal.getNotificationPermission()
@@ -124,7 +126,7 @@ must be opened as a result of a subscription call.</span>`);
       return false;
     });
     OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.IFRAME_POPUP_INITIALIZE, message => {
-      log.info(`(${Environment.getEnv()}) The iFrame has just received initOptions from the host page!`);
+      log.info(`(${SdkEnvironment.getWindowEnv().toString()}) The iFrame has just received initOptions from the host page!`);
 
       preinitializePromise.then(() => {
         OneSignal.config = objectAssign(message.data.hostInitOptions, options, {
@@ -164,7 +166,7 @@ must be opened as a result of a subscription call.</span>`);
                .then(() => {
                  /* 3/20/16: In the future, if navigator.serviceWorker.ready is unusable inside of an insecure iFrame host, adding a message event listener will still work. */
                  //if (navigator.serviceWorker) {
-                 //log.info('We have added an event listener for service worker messages.', Environment.getEnv());
+                 //log.info('We have added an event listener for service worker messages.', SdkEnvironment.getWindowEnv().toString());
                  //navigator.serviceWorker.addEventListener('message', function(event) {
                  //  log.info('Wow! We got a message!', event);
                  //});
@@ -183,18 +185,18 @@ must be opened as a result of a subscription call.</span>`);
       });
     });
     OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, message => {
-      log.debug(Environment.getEnv() + " (Expected iFrame) has received the unsubscribe from push method.");
+      log.debug(SdkEnvironment.getWindowEnv().toString() + " (Expected iFrame) has received the unsubscribe from push method.");
       unsubscribeFromPush()
         .then(() => message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE))
         .catch(e => log.debug('Failed to unsubscribe from push remotely.', e));
     });
     OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, message => {
-      log.debug(Environment.getEnv() + " Calling showHttpPermissionRequest() inside the iFrame, proxied from host.");
+      log.debug(SdkEnvironment.getWindowEnv().toString() + " Calling showHttpPermissionRequest() inside the iFrame, proxied from host.");
       let options = {};
       if (message.data) {
         options = message.data;
       }
-      log.debug(Environment.getEnv() + 'HTTP permission request showing, message data:', message);
+      log.debug(SdkEnvironment.getWindowEnv().toString() + 'HTTP permission request showing, message data:', message);
       OneSignal.showHttpPermissionRequest(options)
                .then(result => {
                  message.reply({status: 'resolve', result: result});
@@ -218,7 +220,7 @@ must be opened as a result of a subscription call.</span>`);
       message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
       return false;
     });
-    if (Environment.isIframe()) {
+    if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame) {
       Event.trigger('httpInitialize');
     }
   }
@@ -250,17 +252,16 @@ must be opened as a result of a subscription call.</span>`);
       let iframe = MainHelper.createHiddenDomIFrame(OneSignal.iframeUrl);
       iframe.onload = () => {
         log.info('iFrame onload event was called for:', iframe.src);
-        let sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
-        if (Environment.isDev()) {
-          sendToOrigin = DEV_FRAME_HOST;
-        } else if (Environment.isStaging()) {
-          sendToOrigin = STAGING_FRAME_HOST;
+        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
+          var sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
+        } else {
+          var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
         }
         let receiveFromOrigin = sendToOrigin;
         OneSignal.iframePostmam = new Postmam(iframe.contentWindow, sendToOrigin, receiveFromOrigin);
         OneSignal.iframePostmam.connect();
         OneSignal.iframePostmam.on('connect', e => {
-          log.debug(`(${Environment.getEnv()}) Fired Postmam connect event!`);
+          log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Fired Postmam connect event!`);
           Promise.all([
             Database.get<string>('Options', 'defaultUrl'),
             Database.get<string>('Options', 'defaultTitle')
@@ -327,9 +328,10 @@ must be opened as a result of a subscription call.</span>`);
 
   static loadPopup(options) {
     // Important: Don't use any promises until the window is opened, otherwise the popup will be blocked
-    let sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
-    if (Environment.isDev()) {
-      sendToOrigin = DEV_FRAME_HOST;
+    if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
+      var sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
+    } else {
+      var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
     }
     let receiveFromOrigin = sendToOrigin;
     let postData = objectAssign({}, MainHelper.getPromptOptionsPostHash(), {
@@ -357,7 +359,7 @@ must be opened as a result of a subscription call.</span>`);
 
     OneSignal.popupPostmam.on(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, message => {
       // e.g. { eventName: 'subscriptionChange', eventData: true}
-      log.debug(`(Popup Postmam) (${Environment.getEnv()}) Got direct postMessage() event from popup event to begin MessagePort comms.`);
+      log.debug(`(Popup Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Got direct postMessage() event from popup event to begin MessagePort comms.`);
       OneSignal.popupPostmam.connect();
       return false;
     });
@@ -377,15 +379,15 @@ must be opened as a result of a subscription call.</span>`);
       OneSignal.popupPostmam.destroy();
     });
     OneSignal.popupPostmam.once(OneSignal.POSTMAM_COMMANDS.BEGIN_BROWSING_SESSION, message => {
-      log.debug(Environment.getEnv() + " Marking current session as a continuing browsing session.");
+      log.debug(SdkEnvironment.getWindowEnv().toString() + " Marking current session as a continuing browsing session.");
       MainHelper.beginTemporaryBrowserSession();
     });
     OneSignal.popupPostmam.once(OneSignal.POSTMAM_COMMANDS.WINDOW_TIMEOUT, message => {
-      log.debug(Environment.getEnv() + " Popup window timed out and was closed.");
+      log.debug(SdkEnvironment.getWindowEnv().toString() + " Popup window timed out and was closed.");
       Event.trigger(OneSignal.EVENTS.POPUP_WINDOW_TIMEOUT);
     });
     OneSignal.popupPostmam.once(OneSignal.POSTMAM_COMMANDS.FINISH_REMOTE_REGISTRATION, message => {
-      log.debug(Environment.getEnv() + " Finishing HTTP popup registration inside the iFrame, sent from popup.");
+      log.debug(SdkEnvironment.getWindowEnv().toString() + " Finishing HTTP popup registration inside the iFrame, sent from popup.");
 
       message.reply({ progress: true });
 
