@@ -20,6 +20,7 @@ import Bell from "../bell/Bell";
 import SubscriptionHelper from "./SubscriptionHelper";
 import EventHelper from "./EventHelper";
 import { Subscription } from '../models/Subscription';
+import SdkEnvironment from "../managers/SdkEnvironment";
 declare var OneSignal: any;
 
 export default class TestHelper {

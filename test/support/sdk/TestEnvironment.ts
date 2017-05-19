@@ -209,9 +209,6 @@ export class TestEnvironment {
     await TestEnvironment.stubDomEnvironment(config);
     TestEnvironment.stubNotifyButtonTransitionEvents();
     TestEnvironment.stubNotification(config);
-    if (config.environment) {
-      Environment.getEnv = () => config.environment;
-    }
     return global.OneSignal;
   }
 }

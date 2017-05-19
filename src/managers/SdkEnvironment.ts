@@ -3,28 +3,9 @@ import Environment from '../Environment';
 import { TestEnvironmentKind } from '../models/TestEnvironmentKind';
 import { TestEnvironment } from '../../test/support/sdk/TestEnvironment';
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
+import { AppConfig } from '../models/AppConfig';
 
 export default class SdkEnvironment {
-
-  /**
-   * Returns the URL in which the push subscription and IndexedDb site data
-   * will be stored.
-   *
-   * For native HTTPS sites not using a subdomain of our service, this is
-   * the top-level URL.
-   *
-   * For sites using a subdomain of our service, this URL was typically
-   * subdomain.onesignal.com, until we switched to subdomain.os.tc for a shorter
-   * origin to fit into Mac's native notifications on Chrome 59+.
-   */
-  getCanonicalSubscriptionUrl(): URL {
-    if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-
-    } else {
-
-    }
-  }
-
   /**
    * Returns development, staging, or production.
    *
@@ -97,11 +78,7 @@ export default class SdkEnvironment {
    * For example, in staging the registered service worker filename is
    * Staging-OneSignalSDKWorker.js.
    */
-  static getBuildEnvPrefix(buildEnv?: BuildEnvironmentKind) : string {
-    if (!buildEnv) {
-      buildEnv = SdkEnvironment.getBuildEnv();
-    }
-
+  static getBuildEnvPrefix(buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv()) : string {
     switch (buildEnv) {
       case BuildEnvironmentKind.Development:
         return 'Dev-';
@@ -116,11 +93,7 @@ export default class SdkEnvironment {
    * Returns the URL object representing the components of OneSignal's API
    * endpoint.
    */
-  static getOneSignalApiUrl(buildEnv?: BuildEnvironmentKind): URL {
-    if (!buildEnv) {
-      buildEnv = SdkEnvironment.getBuildEnv();
-    }
-
+  static getOneSignalApiUrl(buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv()): URL {
     switch (buildEnv) {
       case BuildEnvironmentKind.Development:
         return new URL('https://localhost:3001/api/v1/');

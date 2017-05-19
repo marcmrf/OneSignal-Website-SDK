@@ -69,6 +69,7 @@
     "@types/mocha": "latest",
     "@types/nconf": "latest",
     "@types/node": "latest",
+    "@types/object-assign": "^4.0.30",
     "@types/requirejs": "latest",
     "@types/validator": "latest",
     "@types/whatwg-fetch": "latest",
