@@ -18,8 +18,11 @@ test(`should get correct canonical subscription URL`, async t => {
   config.useLegacyDomain = false;
 
   // First two identical
-  t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Development).host, new URL('https://test.localhost:3001').host);
-  t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Staging).host, new URL('https://test.onesignal-staging.pw').host);
+  //t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Development).host, new URL('https://test.localhost:3001').host);
+  //t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Staging).host, new URL('https://test.onesignal-staging.pw').host);
+
+  t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Development).host, new URL('https://test.os.tc:3001').host);
+  t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Staging).host, new URL('https://test.os.tc').host);
 
   // Use new os.tc
   t.is(AltOriginManager.getCanonicalSubscriptionUrl(config, BuildEnvironmentKind.Production).host, new URL('https://test.os.tc').host);

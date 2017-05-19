@@ -72,7 +72,8 @@ export interface TestEnvironmentConfig {
   initOptions?: any,
   httpOrHttps?: HttpHttpsEnvironment,
   permission?: NotificationPermission,
-  userAgent?: BrowserUserAgent
+  userAgent?: BrowserUserAgent,
+  url?: URL
 }
 
 export class TestEnvironment {
@@ -143,9 +144,9 @@ export class TestEnvironment {
     // global.OneSignal = new ServiceWorker({
     //   databaseName: Random.getRandomString(6)
     // });
-    global.OneSignal.config = config.initOptions ? config.initOptions : {};
-    global.OneSignal.initialized = true;
-    global.OneSignal.getNotifications = () => global.self.registration.notifications;
+    // global.OneSignal.config = config.initOptions ? config.initOptions : {};
+    // global.OneSignal.initialized = true;
+    // global.OneSignal.getNotifications = () => global.self.registration.notifications;
     return global;
   }
 
@@ -156,6 +157,9 @@ export class TestEnvironment {
       var url = 'http://localhost:3000/webpush/sandbox?http=1';
     } else {
       var url = 'https://localhost:3001/webpush/sandbox?https=1';
+    }
+    if (config.url) {
+      var url = config.url.toString();
     }
     global.window = global;
     global.localStorage = new DOMStorage(null);
@@ -185,6 +189,7 @@ export class TestEnvironment {
     (windowDef as any).navigator.serviceWorker = new ServiceWorkerContainer();
     jsdom.reconfigureWindow(windowDef, { top: windowDef });
     Object.assign(global, windowDef);
+    return jsdom;
   }
 
   static stubNotification(config: TestEnvironmentConfig) {

@@ -65,6 +65,7 @@
     "@types/cors": "latest",
     "@types/express": "latest",
     "@types/js-cookie": "latest",
+    "@types/jsdom": "^2.0.30",
     "@types/loglevel": "latest",
     "@types/mocha": "latest",
     "@types/nconf": "latest",

@@ -29,7 +29,7 @@ export default class Postmam {
   public replies: any;
 
   /**
-   * Initializes Postmam with settings but does not establish a channel or set up any message listeners.
+   * Initializes Postmam with settings but does not establishstablishing a connecti a channel or set up any message listeners.
    * @param windowReference The window to postMessage() the initial MessageChannel port to.
    * @param sendToOrigin The origin that will receive the initial postMessage with the transferred message channel port object.
    * @param receiveFromOrigin The origin to allow incoming messages from. If messages do not come from this origin they will be discarded. Only affects the initial handshake.
@@ -86,10 +86,10 @@ export default class Postmam {
   onWindowPostMessageReceived(e) {
     // Discard messages from unexpected origins; messages come frequently from other origins
     if (!this.isSafeOrigin(e.origin)) {
-      // log.debug(`(Postmam) Discarding message because ${e.origin} is not an allowed origin:`, e.data)
+      log.debug(`(Postmam) Discarding message because ${e.origin} is not an allowed origin:`, e.data);
       return;
     }
-    //log.debug(`(Postmam) (onWindowPostMessageReceived) (${SdkEnvironment.getWindowEnv().toString()}):`, e);
+    log.debug(`(Postmam) (onWindowPostMessageReceived) (${SdkEnvironment.getWindowEnv().toString()}):`, e);
     let { id: messageId, command: messageCommand, data: messageData, source: messageSource } = e.data;
     if (messageCommand === Postmam.CONNECTED_MESSAGE) {
       (this as any).emit('connect');
@@ -151,7 +151,7 @@ export default class Postmam {
    * @remarks Only call this if listen() is called on another page.
    */
   connect() {
-    log.info(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Establishing a connection to ${this.sendToOrigin}.`);
+    log.info(`[${location.href}] (Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Establishing a connection to ${this.sendToOrigin}.`);
     this.messagePort = this.channel.port1;
     this.messagePort.addEventListener('message', this.onMessageReceived.bind(this), false);
     this.messagePort.start();
@@ -279,7 +279,7 @@ export default class Postmam {
 
   isSafeOrigin(messageOrigin) {
     if (!OneSignal.config) {
-      var subdomain = "test";
+      var subdomain = "x";
     } else {
       var subdomain = OneSignal.config.subdomainName as string;
     }
@@ -289,6 +289,8 @@ export default class Postmam {
     return (// messageOrigin === '' || TODO: See if messageOrigin can be blank
             messageOrigin === 'https://onesignal.com' ||
             messageOrigin === `https://${subdomain || ''}.onesignal.com` ||
+            messageOrigin === `https://${subdomain || ''}.os.tc` ||
+            messageOrigin === `https://${subdomain || ''}.os.tc:3001` ||
             (messageOrigin === SdkEnvironment.getOneSignalApiUrl().origin) ||
             this.receiveFromOrigin === '*' ||
             contains(otherAllowedOrigins, messageOrigin));

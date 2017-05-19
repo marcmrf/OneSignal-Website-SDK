@@ -317,25 +317,6 @@ export function isValidUuid(uuid) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(uuid);
 }
 
-/**
- * Returns the correct subdomain if 'https://subdomain.onesignal.com' or something similar is passed.
- */
-export function normalizeSubdomain(subdomain) {
-  subdomain = subdomain.trim();
-  let removeSubstrings = [
-    'http://www.',
-    'https://www.',
-    'http://',
-    'https://',
-    '.onesignal.com/',
-    '.onesignal.com'
-  ];
-  for (let removeSubstring of removeSubstrings) {
-    subdomain = subdomain.replace(removeSubstring, '');
-  }
-  return subdomain.toLowerCase();
-}
-
 export function getUrlQueryParam(name) {
   let url = window.location.href;
   url = url.toLowerCase(); // This is just to avoid case sensitiveness

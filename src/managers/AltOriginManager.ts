@@ -3,8 +3,20 @@ import { AppConfig } from '../models/AppConfig';
 import SdkEnvironment from './SdkEnvironment';
 import { BuildEnvironmentKind } from '../models/BuildEnvironmentKind';
 import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateError';
+import OneSignalApi from '../OneSignalApi';
+import { Uuid } from '../models/Uuid';
+import Database from '../services/Database';
 
 export default class AltOriginManager {
+
+  /**
+   * Saves into IndexedDb and returns the app config pulled from OneSignal.
+   */
+  static async queryAndSaveAppConfig(appId: Uuid) {
+    const config = await OneSignalApi.getAppConfig(appId);
+    await Database.setAppConfig(config);
+    return config;
+  }
 
   /**
    * Returns the URL in which the push subscription and IndexedDb site data
@@ -24,6 +36,11 @@ export default class AltOriginManager {
     url.host = [config.subdomain, url.host].join('.');
 
     if (!config.useLegacyDomain && buildEnv === BuildEnvironmentKind.Production) {
+      url.host = [config.subdomain, 'os.tc'].join('.');
+    }
+    // TODO: This block below is for testing purposes only. Remove for production.
+    // For use with Charles proxy only
+    if (!config.useLegacyDomain) {
       url.host = [config.subdomain, 'os.tc'].join('.');
     }
 

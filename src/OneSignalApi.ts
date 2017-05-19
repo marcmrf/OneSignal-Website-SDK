@@ -130,9 +130,11 @@ export default class OneSignalApi {
 
   static async getAppConfig(appId: Uuid): Promise<AppConfig> {
     const {
+      subdomain: subdomain,
       use_legacy_domain: useLegacyDomain
     } = await OneSignalApi.get(`webpush/${appId.value}/config`);
     const config = new AppConfig();
+    config.subdomain = subdomain;
     config.useLegacyDomain = useLegacyDomain;
     return config;
   }

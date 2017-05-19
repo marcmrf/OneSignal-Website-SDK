@@ -19,6 +19,7 @@ import TestHelper from './TestHelper';
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { BuildEnvironmentKind } from "../models/BuildEnvironmentKind";
 import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
+import AltOriginManager from '../managers/AltOriginManager';
 
 declare var OneSignal: any;
 
@@ -252,13 +253,8 @@ must be opened as a result of a subscription call.</span>`);
       let iframe = MainHelper.createHiddenDomIFrame(OneSignal.iframeUrl);
       iframe.onload = () => {
         log.info('iFrame onload event was called for:', iframe.src);
-        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
-          var sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
-        } else {
-          var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
-        }
-        let receiveFromOrigin = sendToOrigin;
-        OneSignal.iframePostmam = new Postmam(iframe.contentWindow, sendToOrigin, receiveFromOrigin);
+        let sendToOrigin = new URL(OneSignal.iframeUrl).origin;
+        OneSignal.iframePostmam = new Postmam(iframe.contentWindow, sendToOrigin, sendToOrigin);
         OneSignal.iframePostmam.connect();
         OneSignal.iframePostmam.on('connect', e => {
           log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Fired Postmam connect event!`);
@@ -328,12 +324,7 @@ must be opened as a result of a subscription call.</span>`);
 
   static loadPopup(options) {
     // Important: Don't use any promises until the window is opened, otherwise the popup will be blocked
-    if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
-      var sendToOrigin = `https://${OneSignal.config.subdomainName}.onesignal.com`;
-    } else {
-      var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
-    }
-    let receiveFromOrigin = sendToOrigin;
+    const sendToOrigin = AltOriginManager.getOneSignalSubscriptionPopupUrl(OneSignal.appConfig).origin;
     let postData = objectAssign({}, MainHelper.getPromptOptionsPostHash(), {
       promptType: 'popup',
       parentHostname: encodeURIComponent(location.hostname)
@@ -354,7 +345,8 @@ must be opened as a result of a subscription call.</span>`);
     log.info(`Opening popup window to ${OneSignal.popupUrl} with POST data:`, OneSignal.popupUrl);
     var subdomainPopup = MainHelper.openSubdomainPopup(OneSignal.popupUrl, postData, overrides);
 
-    OneSignal.popupPostmam = new Postmam(subdomainPopup, sendToOrigin, receiveFromOrigin);
+    console.log('send to origin:', sendToOrigin);
+    OneSignal.popupPostmam = new Postmam(subdomainPopup, sendToOrigin, sendToOrigin);
     OneSignal.popupPostmam.startPostMessageReceive();
 
     OneSignal.popupPostmam.on(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, message => {

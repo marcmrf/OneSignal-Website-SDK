@@ -6,7 +6,7 @@ import Event from "../Event";
 import Database from '../services/Database';
 import * as Browser from 'bowser';
 import {
-  getConsoleStyle, contains, normalizeSubdomain, getDeviceTypeForBrowser, capitalize,
+  getConsoleStyle, contains, getDeviceTypeForBrowser, capitalize,
   awaitOneSignalInitAndSupported
 } from '../utils';
 import * as objectAssign from 'object-assign';

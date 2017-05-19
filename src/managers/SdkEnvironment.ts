@@ -38,6 +38,7 @@ export default class SdkEnvironment {
             location.search === '') &&
           (
             location.hostname.endsWith('.onesignal.com') ||
+            location.hostname.endsWith('.os.tc') ||
             (location.hostname.indexOf('.localhost') !== -1 && SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Development)
           )
         ) {

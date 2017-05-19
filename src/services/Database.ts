@@ -167,6 +167,10 @@ export default class Database {
       await this.put('Options', {key: 'autoRegister', value: appConfig.autoRegister})
     if (appConfig.serviceWorkerConfig)
       await this.put('Options', {key: 'serviceWorkerConfig', value: appConfig.serviceWorkerConfig})
+    if (appConfig.useLegacyDomain)
+      await this.put('Options', { key: 'useLegacyDomain', value: true })
+    else
+      await this.put('Options', {key: 'useLegacyDomain', value: false })
   }
 
   async getAppState(): Promise<AppState> {

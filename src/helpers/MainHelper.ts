@@ -7,7 +7,6 @@ import * as Browser from "bowser";
 import {
   getConsoleStyle,
   contains,
-  normalizeSubdomain,
   getDeviceTypeForBrowser,
   capitalize,
   awaitOneSignalInitAndSupported
@@ -375,12 +374,6 @@ export default class MainHelper {
     });
   }
 
-  static getNormalizedSubdomain(subdomain) {
-    if (subdomain) {
-      return normalizeSubdomain(subdomain);
-    }
-  }
-
   static getPromptOptionsQueryString() {
     let promptOptions = OneSignal.config['promptOptions'];
     let promptOptionsStr = '';
@@ -454,14 +447,6 @@ export default class MainHelper {
     Event.trigger(OneSignal.EVENTS.CUSTOM_PROMPT_CLICKED, {
       result: clickResult
     });
-  }
-
-  static autoCorrectSubdomain(inputSubdomain) {
-    let normalizedSubdomain = MainHelper.getNormalizedSubdomain(inputSubdomain);
-    if (normalizedSubdomain !== inputSubdomain) {
-      log.info(`Auto-corrected subdomain '${inputSubdomain}' to '${normalizedSubdomain}'.`);
-    }
-    return normalizedSubdomain;
   }
 
   static createHiddenDomIFrame(url, name?) {

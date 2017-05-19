@@ -49,6 +49,8 @@ import { DynamicResourceLoader, ResourceLoadState } from "./services/DynamicReso
 import SdkEnvironment from './managers/SdkEnvironment';
 import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
+import AltOriginManager from './managers/AltOriginManager';
+import { AppConfig } from './models/AppConfig';
 
 
 export default class OneSignal {
@@ -145,7 +147,7 @@ export default class OneSignal {
       return;
     }
 
-    function __init() {
+    async function __init() {
       if (OneSignal.__initAlreadyCalled) {
         // Call from window.addEventListener('DOMContentLoaded', () => {
         // Call from if (document.readyState === 'complete' || document.readyState === 'interactive')
@@ -156,31 +158,24 @@ export default class OneSignal {
       MainHelper.fixWordpressManifestIfMisplaced();
 
       if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-        if (OneSignal.config.subdomainName) {
-          OneSignal.config.subdomainName = MainHelper.autoCorrectSubdomain(OneSignal.config.subdomainName);
-        } else {
-          log.error('OneSignal: Your JavaScript initialization code is missing a required parameter %csubdomainName',
-            getConsoleStyle('code'),
-            '. HTTP sites require this parameter to initialize correctly. Please see steps 1.4 and 2 at ' +
-            'https://documentation.onesignal.com/docs/web-push-sdk-setup-http)');
-          return;
-        }
-
-        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
-          OneSignal.iframeUrl = `https://${OneSignal.config.subdomainName}.onesignal.com/webPushIframe`;
-          OneSignal.popupUrl = `https://${OneSignal.config.subdomainName}.onesignal.com/subscribe`;
-        }
-        else {
-          OneSignal.iframeUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/webPushIframe`;
-          OneSignal.popupUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/subscribe`;
+        try {
+          const appConfig = await AltOriginManager.queryAndSaveAppConfig(new Uuid(OneSignal.config.appId));
+          OneSignal.appConfig = appConfig;
+          OneSignal.iframeUrl = AltOriginManager.getOneSignalProxyIframeUrl(appConfig).toString();
+          OneSignal.popupUrl = AltOriginManager.getOneSignalSubscriptionPopupUrl(appConfig).toString();
+        } catch (e) {
+          if (e && e.code === 2) {
+            log.error(`OneSignal: App ID %c${OneSignal.config.appId}`,
+              getConsoleStyle('code'),
+              ' is not configured for web push.');
+            return;
+          }
         }
       } else {
-        if (SdkEnvironment.getBuildEnv() === BuildEnvironmentKind.Production) {
-          OneSignal.modalUrl = `https://onesignal.com/webPushModal`;
-        }
-        else {
-          OneSignal.modalUrl = `${SdkEnvironment.getOneSignalApiUrl().origin}/webPushModal`;
-        }
+        const appConfig = new AppConfig();
+        const modalUrl = AltOriginManager.getCanonicalSubscriptionUrl(appConfig);
+        modalUrl.pathname = 'webPushModal';
+        OneSignal.modalUrl = modalUrl.toString();
       }
 
       let subdomainPromise = Promise.resolve();
@@ -802,6 +797,8 @@ export default class OneSignal {
   static initHelper = InitHelper;
   static testHelper = TestHelper;
   static objectAssign = objectAssign;
+  static appConfig = null;
+
   /**
    * The additional path to the worker file.
    *
