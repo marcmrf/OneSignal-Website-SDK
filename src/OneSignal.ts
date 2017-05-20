@@ -51,6 +51,7 @@ import { BuildEnvironmentKind } from './models/BuildEnvironmentKind';
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 import AltOriginManager from './managers/AltOriginManager';
 import { AppConfig } from './models/AppConfig';
+import LegacyManager from './managers/LegacyManager';
 
 
 export default class OneSignal {
@@ -980,6 +981,8 @@ if (OneSignal.LOGGING)
 else {
   log.setDefaultLevel((<any>log).levels.WARN);
 }
+
+LegacyManager.ensureBackwardsCompatibility(OneSignal);
 
 log.info(`%cOneSignal Web SDK loaded (version ${OneSignal._VERSION}, ${SdkEnvironment.getWindowEnv().toString()} environment).`, getConsoleStyle('bold'));
 log.debug(`Current Page URL: ${typeof location === "undefined" ? "NodeJS" : location.href}`);

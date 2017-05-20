@@ -438,7 +438,6 @@ class ServiceWorker {
              replace each other.
              */
             tag: extra.tag,
-            badge: 'https://onesignal.com/images.notification_logo.png',
             /*
              On Chrome 47+ (desktop), notifications will be dismissed after 20 seconds unless requireInteraction
              is set to true. See:
@@ -451,7 +450,11 @@ class ServiceWorker {
              notifications to re-alert the user. See:
              https://developers.google.com/web/updates/2016/03/notifications
              */
-            renotify: true
+            renotify: true,
+            /*
+             On Chrome 53+, returns the URL of the image used to represent the notification when there is not enough space to display the notification itself.
+             */
+            badge: notification.badge
           };
           return self.registration.showNotification(notification.heading, notificationOptions)
         });
