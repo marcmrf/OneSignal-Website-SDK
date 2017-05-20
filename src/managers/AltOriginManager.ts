@@ -9,6 +9,14 @@ import Database from '../services/Database';
 
 export default class AltOriginManager {
 
+  constructor() {
+
+  }
+
+  discoverAltOrigin() {
+
+  }
+
   /**
    * Saves into IndexedDb and returns the app config pulled from OneSignal.
    */
@@ -30,14 +38,15 @@ export default class AltOriginManager {
    * origin to fit into Mac's native notifications on Chrome 59+.
    */
   static getCanonicalSubscriptionUrl(config: AppConfig,
-                                     buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv()): URL {
+                                     buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv(),
+                                     isSubscribed: boolean): URL {
     let url = SdkEnvironment.getOneSignalApiUrl(buildEnv);
     url.pathname = '';
     url.host = [config.subdomain, url.host].join('.');
 
     if (!config.useLegacyDomain && buildEnv === BuildEnvironmentKind.Production) {
       url.host = [config.subdomain, 'os.tc'].join('.');
-    }
+    } else if (config.useLegacyDomain)
     // TODO: This block below is for testing purposes only. Remove for production.
     // For use with Charles proxy only
     if (!config.useLegacyDomain) {

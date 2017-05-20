@@ -448,21 +448,6 @@ export default class MainHelper {
       result: clickResult
     });
   }
-
-  static createHiddenDomIFrame(url, name?) {
-    let node = document.createElement("iframe");
-    node.style.display = "none";
-    if (!url) {
-      url = 'about:blank';
-    }
-    node.src = url;
-    if (name) {
-      node.name = name;
-    }
-    document.body.appendChild(node);
-    return node;
-  }
-
   static createHiddenSubscriptionDomModal(url) {
     let iframeContainer = document.createElement('div');
     iframeContainer.setAttribute('id', 'OneSignal-iframe-modal');

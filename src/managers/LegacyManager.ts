@@ -20,4 +20,8 @@ export default class LegacyManager {
       return SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalProxyFrame;
     }
   }
+
+  static iframePostmam(oneSignal) {
+    // TODO:
+  }
 }

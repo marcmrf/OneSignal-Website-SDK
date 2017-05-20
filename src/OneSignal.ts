@@ -162,7 +162,7 @@ export default class OneSignal {
         try {
           const appConfig = await AltOriginManager.queryAndSaveAppConfig(new Uuid(OneSignal.config.appId));
           OneSignal.appConfig = appConfig;
-          OneSignal.iframeUrl = AltOriginManager.getOneSignalProxyIframeUrl(appConfig).toString();
+          OneSignal.- = AltOriginManager.getOneSignalProxyIframeUrl(appConfig).toString();
           OneSignal.popupUrl = AltOriginManager.getOneSignalSubscriptionPopupUrl(appConfig).toString();
         } catch (e) {
           if (e && e.code === 2) {

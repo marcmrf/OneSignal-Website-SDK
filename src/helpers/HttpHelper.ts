@@ -250,71 +250,7 @@ must be opened as a result of a subscription call.</span>`);
       log.debug(`Called %cloadSubdomainIFrame()`, getConsoleStyle('code'));
 
       log.debug('Loading subdomain iFrame:', OneSignal.iframeUrl);
-      let iframe = MainHelper.createHiddenDomIFrame(OneSignal.iframeUrl);
-      iframe.onload = () => {
-        log.info('iFrame onload event was called for:', iframe.src);
-        let sendToOrigin = new URL(OneSignal.iframeUrl).origin;
-        OneSignal.iframePostmam = new Postmam(iframe.contentWindow, sendToOrigin, sendToOrigin);
-        OneSignal.iframePostmam.connect();
-        OneSignal.iframePostmam.on('connect', e => {
-          log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Fired Postmam connect event!`);
-          Promise.all([
-            Database.get<string>('Options', 'defaultUrl'),
-            Database.get<string>('Options', 'defaultTitle')
-          ])
-                 .then(([defaultUrlResult, defaultTitleResult]) => {
-                   if (!defaultUrlResult) {
-                     var defaultUrl = location.href;
-                   } else {
-                     var defaultUrl = defaultUrlResult;
-                   }
-
-                   if (!defaultTitleResult) {
-                     var defaultTitle = document.title;
-                   } else {
-                     var defaultTitle = defaultTitleResult;
-                   }
-
-                   OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.IFRAME_POPUP_INITIALIZE, {
-                     hostInitOptions: JSON.parse(JSON.stringify(OneSignal.config)), // Removes functions and unmessageable objects
-                     defaultUrl: defaultUrl,
-                     pageUrl: window.location.href,
-                     pageTitle: defaultTitle,
-                   }, reply => {
-                     if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
-                       resolve();
-                       Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
-                     }
-                     return false;
-                   });
-                 });
-        });
-        OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, message => {
-          // e.g. { eventName: 'subscriptionChange', eventData: true}
-          let {eventName, eventData} = message.data;
-          Event.trigger(eventName, eventData, message.source);
-          return false;
-        });
-        OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, message => {
-          let {forceUpdatePermission} = message.data;
-          EventHelper.triggerNotificationPermissionChanged(forceUpdatePermission);
-          return false;
-        });
-        OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.REQUEST_HOST_URL, message => {
-          message.reply(location.href);
-          return false;
-        });
-        OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, message => {
-          window.location.href = message.data;
-          return false;
-        });
-        OneSignal.iframePostmam.on(OneSignal.POSTMAM_COMMANDS.HTTP_PERMISSION_REQUEST_RESUBSCRIBE, message => {
-          log.debug('(Reposted from iFrame -> Host) User unsubscribed but permission granted. Re-prompting the user for push.');
-          OneSignal.showHttpPrompt({ __sdkCall: true, __useHttpPermissionRequestStyle: true }).catch(e => {
-            log.debug('[Resubscribe Prompt Error]', e);
-          });
-          return false;
-        });
+      // TODO: Being replaced
       };
       OneSignal._sessionIframeAdded = true;
     });
