@@ -477,60 +477,6 @@ export default class MainHelper {
     iframeContainer.setAttribute('style', '');
   }
 
-  // Arguments :
-  //  verb : 'GET'|'POST'
-  //  target : an optional opening target (a name, or "_blank"), defaults to "_self"
-  static openWindowViaPost(url, data, overrides) {
-    var form = document.createElement("form");
-    form.action = url;
-    form.method = 'POST';
-    form.target = "onesignal-http-popup";
-
-    var dualScreenLeft = window.screenLeft != undefined ? window.screenLeft : (screen as any).left;
-    var dualScreenTop = window.screenTop != undefined ? window.screenTop : (screen as any).top;
-    var thisWidth = window.innerWidth ? window.innerWidth : document.documentElement.clientWidth ? document.documentElement.clientWidth : screen.width;
-    var thisHeight = window.innerHeight ? window.innerHeight : document.documentElement.clientHeight ? document.documentElement.clientHeight : screen.height;
-    var childWidth = OneSignal._windowWidth;
-    var childHeight = OneSignal._windowHeight;
-    var left = ((thisWidth / 2) - (childWidth / 2)) + dualScreenLeft;
-    var top = ((thisHeight / 2) - (childHeight / 2)) + dualScreenTop;
-
-    if (overrides) {
-      if (overrides.childWidth) {
-        childWidth = overrides.childWidth;
-      }
-      if (overrides.childHeight) {
-        childHeight = overrides.childHeight;
-      }
-      if (overrides.left) {
-        left = overrides.left;
-      }
-      if (overrides.top) {
-        top = overrides.top;
-      }
-    }
-    const windowRef = window.open('about:blank', "onesignal-http-popup", `'scrollbars=yes, width=${childWidth}, height=${childHeight}, top=${top}, left=${left}`);
-
-    if (data) {
-      for (var key in data) {
-        var input = document.createElement("textarea");
-        input.name = key;
-        input.value = typeof data[key] === "object" ? JSON.stringify(data[key]) : data[key];
-        form.appendChild(input);
-      }
-    }
-    form.style.display = 'none';
-    document.body.appendChild(form);
-    form.submit();
-    document.body.removeChild(form);
-
-    return windowRef;
-  };
-
-  static openSubdomainPopup(url, data, overrides) {
-    return MainHelper.openWindowViaPost(url, data, overrides);
-  }
-
   static getAppId() {
     if (OneSignal.config.appId) {
       return Promise.resolve(OneSignal.config.appId);

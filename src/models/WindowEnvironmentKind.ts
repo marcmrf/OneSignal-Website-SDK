@@ -15,6 +15,11 @@ export enum WindowEnvironmentKind {
   OneSignalSubscriptionPopup,
 
   /**
+   * Our subscription modal for HTTPS sites, which loads in an iFrame.
+   */
+  OneSignalSubscriptionModal,
+
+  /**
    * Our subscription helper iFrame.
    */
   OneSignalProxyFrame,

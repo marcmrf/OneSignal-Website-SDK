@@ -209,7 +209,7 @@ export default class Postmam {
   /**
    * Sends via window.postMessage.
    */
-  postMessage(command, data, onReply) {
+  postMessage(command, data, onReply?) {
     if (!command || command == '') {
       throw new Error("(Postmam) Postmam command must not be empty.");
     }

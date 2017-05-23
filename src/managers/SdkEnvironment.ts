@@ -48,9 +48,10 @@ export default class SdkEnvironment {
           return WindowEnvironmentKind.Host;
         }
       }
-      else if (location.pathname === '/webPushIframe' ||
-        location.pathname === '/webPushModal') {
+      else if (location.pathname === '/webPushIframe') {
         return WindowEnvironmentKind.OneSignalProxyFrame;
+      } else if (location.pathname === '/webPushModal') {
+        return WindowEnvironmentKind.OneSignalSubscriptionModal;
       }
       else {
         return WindowEnvironmentKind.CustomIframe;

@@ -13,6 +13,8 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { InvalidStateReason } from "../errors/InvalidStateError";
 import HttpHelper from "../helpers/HttpHelper";
 import TestHelper from "../helpers/TestHelper";
+import InitHelper from "../helpers/InitHelper";
+import MainHelper from "../helpers/MainHelper";
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded
@@ -100,16 +102,11 @@ export default class ProxyFrame implements Disposable {
 
     InitHelper.installNativePromptPermissionChangedHook();
 
-    let opPromises = [];
-    if (options.continuePressed) {
-      opPromises.push(OneSignal.setSubscription(true));
-    }
     // 3/30/16: For HTTP sites, put the host page URL as default URL if one doesn't exist already
-    opPromises.push(Database.get('Options', 'defaultUrl').then(defaultUrl => {
-      if (!defaultUrl) {
-        return Database.put('Options', {key: 'defaultUrl', value: new URL(OneSignal.config.defaultUrl).origin});
-      }
-    }));
+    const defaultUrl = await Database.get('Options', 'defaultUrl');
+    if (!defaultUrl) {
+      await Database.put('Options', {key: 'defaultUrl', value: new URL(OneSignal.config.defaultUrl).origin});
+    }
 
     /**
      * When a user is on http://example.com and receives a notification, we want to open a new window only if the
@@ -118,33 +115,20 @@ export default class ProxyFrame implements Disposable {
      * sets the HTTP's origin, this can be modified if users call setDefaultTitle(). lastKnownHostUrl therefore
      * stores the last visited full page URL.
      */
-    opPromises.push(
-        Database.put('Options', {key: 'lastKnownHostUrl', value: OneSignal.config.pageUrl})
-    );
+    await Database.put('Options', { key: 'lastKnownHostUrl', value: OneSignal.config.pageUrl });
+    await InitHelper.initSaveState();
+    await InitHelper.storeInitialValues();
+    await InitHelper.saveInitOptions();
 
-    opPromises.push(InitHelper.initSaveState());
-    opPromises.push(InitHelper.storeInitialValues());
-    opPromises.push(InitHelper.saveInitOptions());
-    Promise.all(opPromises as any[])
-            .then(() => {
-              /* 3/20/16: In the future, if navigator.serviceWorker.ready is unusable inside of an insecure iFrame host, adding a message event listener will still work. */
-              //if (navigator.serviceWorker) {
-              //log.info('We have added an event listener for service worker messages.', SdkEnvironment.getWindowEnv().toString());
-              //navigator.serviceWorker.addEventListener('message', function(event) {
-              //  log.info('Wow! We got a message!', event);
-              //});
-              //}
+    if (navigator.serviceWorker && window.location.protocol === 'https:') {
+      try {
+        MainHelper.establishServiceWorkerChannel();
+      } catch (e) {
+        log.error(`Error interacting with Service Worker inside an HTTP-hosted iFrame:`, e);
+      }
+    }
 
-              if (navigator.serviceWorker && window.location.protocol === 'https:') {
-                try {
-                  MainHelper.establishServiceWorkerChannel();
-                } catch (e) {
-                  log.error(`Error interacting with Service Worker inside an HTTP-hosted iFrame:`, e);
-                }
-              }
-
-              message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
-            });
+    message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
   }
 
   async onRemoteNotificationPermission(message: MessengerMessageEvent) {

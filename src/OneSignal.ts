@@ -54,6 +54,7 @@ import AltOriginManager from './managers/AltOriginManager';
 import { AppConfig } from './models/AppConfig';
 import LegacyManager from './managers/LegacyManager';
 import ProxyFrameHost from './modules/ProxyFrameHost';
+import SubscriptionPopupHost from './modules/SubscriptionPopupHost';
 
 
 export default class OneSignal {
@@ -338,7 +339,14 @@ export default class OneSignal {
     //          Otherwise the pop-up to ask for push permission on HTTP connections will be blocked by Chrome.
     function __registerForPushNotifications() {
       if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-        HttpHelper.loadPopup(options);
+          /**
+           * Users may be subscribed to either .onesignal.com or .os.tc. By this time
+           * that they are subscribing to the popup, the Proxy Frame has already been
+           * loaded and the user's subscription status has been obtained. We can then
+           * use the Proxy Frame present now and check its URL to see whether the user
+           * is finally subscribed to .onesignal.com or .os.tc.
+           */
+        OneSignal.subscriptionPopupHost = new SubscriptionPopupHost(OneSignal.proxyFrameHost.url, options);
       } else {
         if (!options)
           options = {};
@@ -768,7 +776,6 @@ export default class OneSignal {
   static _idsAvailable_callback = [];
   static _defaultLaunchURL = null;
   static config = null;
-  static _thisIsThePopup = false;
   static __isPopoverShowing = false;
   static _sessionInitAlreadyRunning = false;
   static _isNotificationEnabledCallback = [];
@@ -827,7 +834,6 @@ export default class OneSignal {
   static _usingNativePermissionHook = false;
   static _initCalled = false;
   static __initAlreadyCalled = false;
-  static _thisIsTheModal: boolean;
   static modalPostmam: any;
   static httpPermissionRequestPostModal: any;
   static closeNotifications = ServiceWorkerHelper.closeNotifications;
@@ -848,7 +854,7 @@ export default class OneSignal {
    * Used by Rails-side HTTP popup. Must keep the same name.
    * @InternalApi
    */
-  static _initPopup = HttpHelper.initPopup;
+  static _initPopup = () => OneSignal.subscriptionPopup.subscribe();
 
   static POSTMAM_COMMANDS = {
     CONNECTED: 'connect',

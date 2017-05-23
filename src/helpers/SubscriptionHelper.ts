@@ -9,8 +9,8 @@ import ServiceWorkerHelper from "./ServiceWorkerHelper";
 import EventHelper from "./EventHelper";
 import PushPermissionNotGrantedError from "../errors/PushPermissionNotGrantedError";
 import TestHelper from "./TestHelper";
-import SdkEnvironment from "../managers/SdkEnvironment";
-import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import TimeoutError from '../errors/TimeoutError';
 
 
@@ -250,7 +250,7 @@ export default class SubscriptionHelper {
                            else
                              log.warn('Could not subscribe your browser for push notifications.');
 
-                           if (OneSignal._thisIsThePopup) {
+                           if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
                              // 12/16/2015 -- At this point, the user has just clicked Allow on the HTTP popup!!
                              // 11/22/2016 - HTTP popup should move non-essential subscription parts to the iframe
                              OneSignal.popupPostmam.message(OneSignal.POSTMAM_COMMANDS.FINISH_REMOTE_REGISTRATION, {
@@ -336,12 +336,12 @@ export default class SubscriptionHelper {
                  if (!OneSignal._usingNativePermissionHook)
                    EventHelper.triggerNotificationPermissionChanged();
 
-                 if (opener && OneSignal._thisIsThePopup)
+                 if (opener && SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup)
                    window.close();
                });
 
                // If there was an error subscribing like the timeout bug, close the popup anyways
-               if (opener && OneSignal._thisIsThePopup)
+               if (opener && SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup)
                  window.close();
              });
   }
