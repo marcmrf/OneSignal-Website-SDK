@@ -55,7 +55,7 @@ test.only('should get proxy frame window environment', async t => {
   t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.OneSignalProxyFrame);
 
   browser.changeURL(window, "https://something/webPushModal");
-  t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.OneSignalProxyFrame);
+  t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.OneSignalSubscriptionModal);
 });
 
 test.only('should get custom iFrame window environment', async t => {

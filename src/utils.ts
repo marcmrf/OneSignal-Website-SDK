@@ -1,4 +1,3 @@
-///<reference path="models/Action.ts"/>
 import * as log from "loglevel";
 import * as Browser from "bowser";
 import Environment from "./Environment";
