@@ -22,6 +22,6 @@ export default class LegacyManager {
   }
 
   static iframePostmam(oneSignal) {
-    // TODO:
+    oneSignal.iframePostmam = OneSignal.proxyFrameHost;
   }
 }

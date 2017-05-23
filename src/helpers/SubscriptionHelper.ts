@@ -253,7 +253,7 @@ export default class SubscriptionHelper {
                            if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
                              // 12/16/2015 -- At this point, the user has just clicked Allow on the HTTP popup!!
                              // 11/22/2016 - HTTP popup should move non-essential subscription parts to the iframe
-                             OneSignal.popupPostmam.message(OneSignal.POSTMAM_COMMANDS.FINISH_REMOTE_REGISTRATION, {
+                             OneSignal.subscriptionPopup.message(OneSignal.POSTMAM_COMMANDS.FINISH_REMOTE_REGISTRATION, {
                                subscriptionInfo: subscriptionInfo
                              }, message => {
                                if (message.data.progress === true) {

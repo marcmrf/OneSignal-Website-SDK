@@ -1,24 +1,24 @@
-import Postmam from '../Postmam';
-import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
-import Database from "../services/Database";
-import Event from "../Event";
-import EventHelper from "../helpers/EventHelper";
-import { timeoutPromise, unsubscribeFromPush, isPushNotificationsSupported } from '../utils';
-import TimeoutError from '../errors/TimeoutError';
-import { ProxyFrameInitOptions } from '../models/ProxyFrameInitOptions';
-import { Uuid } from '../models/Uuid';
-import ServiceWorkerHelper from "../helpers/ServiceWorkerHelper";
+import Postmam from '../../Postmam';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Database from "../../services/Database";
+import Event from "../../Event";
+import EventHelper from "../../helpers/EventHelper";
+import { timeoutPromise, unsubscribeFromPush, isPushNotificationsSupported } from '../../utils';
+import TimeoutError from '../../errors/TimeoutError';
+import { ProxyFrameInitOptions } from '../../models/ProxyFrameInitOptions';
+import { Uuid } from '../../models/Uuid';
+import ServiceWorkerHelper from "../../helpers/ServiceWorkerHelper";
 import * as objectAssign from 'object-assign';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { InvalidStateReason } from "../errors/InvalidStateError";
-import HttpHelper from "../helpers/HttpHelper";
-import TestHelper from "../helpers/TestHelper";
-import InitHelper from "../helpers/InitHelper";
-import MainHelper from "../helpers/MainHelper";
-import AltOriginManager from '../managers/AltOriginManager';
-import { AppConfig } from '../models/AppConfig';
-import { SubscriptionModalInitOptions } from '../models/SubscriptionModalInitOptions';
-import SubscriptionHelper from '../helpers/SubscriptionHelper';
+import SdkEnvironment from '../../managers/SdkEnvironment';
+import { InvalidStateReason } from "../../errors/InvalidStateError";
+import HttpHelper from "../../helpers/HttpHelper";
+import TestHelper from "../../helpers/TestHelper";
+import InitHelper from "../../helpers/InitHelper";
+import MainHelper from "../../helpers/MainHelper";
+import AltOriginManager from '../../managers/AltOriginManager';
+import { AppConfig } from '../../models/AppConfig';
+import { SubscriptionModalInitOptions } from '../../models/SubscriptionModalInitOptions';
+import SubscriptionHelper from '../../helpers/SubscriptionHelper';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded

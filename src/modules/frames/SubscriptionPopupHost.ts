@@ -1,13 +1,13 @@
-import Postmam from '../Postmam';
-import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
-import Database from "../services/Database";
-import Event from "../Event";
-import EventHelper from "../helpers/EventHelper";
-import { timeoutPromise } from "../utils";
-import TimeoutError from '../errors/TimeoutError';
+import Postmam from '../../Postmam';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Database from "../../services/Database";
+import Event from "../../Event";
+import EventHelper from "../../helpers/EventHelper";
+import { timeoutPromise } from "../../utils";
+import TimeoutError from '../../errors/TimeoutError';
 import * as objectAssign from 'object-assign';
-import MainHelper from '../helpers/MainHelper';
-import SdkEnvironment from '../managers/SdkEnvironment';
+import MainHelper from '../../helpers/MainHelper';
+import SdkEnvironment from '../../managers/SdkEnvironment';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main
@@ -169,7 +169,7 @@ export default class SubscriptionPopupHost implements Disposable {
   async onPopupClosing(message: MessengerMessageEvent) {
     log.info('Popup window is closing, running cleanup events.');
     Event.trigger(OneSignal.EVENTS.POPUP_CLOSING);
-    OneSignal.popupPostmam.destroy();
+    this.dispose();
   }
 
   async onBeginBrowsingSession(message: MessengerMessageEvent) {
@@ -188,7 +188,7 @@ export default class SubscriptionPopupHost implements Disposable {
     message.reply({ progress: true });
 
     const appId = await MainHelper.getAppId()
-    OneSignal.popupPostmam.stopPostMessageReceive();
+    this.messenger.stopPostMessageReceive();
     await MainHelper.registerWithOneSignal(appId, message.data.subscriptionInfo)
     EventHelper.checkAndTriggerSubscriptionChanged();
   }

@@ -15,6 +15,7 @@ import HttpHelper from "../../helpers/HttpHelper";
 import TestHelper from "../../helpers/TestHelper";
 import InitHelper from "../../helpers/InitHelper";
 import MainHelper from "../../helpers/MainHelper";
+import SubscriptionHelper from '../../helpers/SubscriptionHelper';
 
 export default class RemoteFrame implements Disposable {
   protected messenger: Postmam;
@@ -69,11 +70,25 @@ export default class RemoteFrame implements Disposable {
     this.messenger.destroy();
   }
 
+  async subscribe() {
+    // Do not register OneSignalSDKUpdaterWorker.js for HTTP popup sites; the file does not exist
+    const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
+    if (!isPushEnabled) {
+      try {
+        const workerRegistration = await navigator.serviceWorker.register(OneSignal.SERVICE_WORKER_PATH, OneSignal.SERVICE_WORKER_PARAM)
+        SubscriptionHelper.enableNotifications(workerRegistration);
+      } catch (e) {
+        log.error('Failed to register service worker in the popup/modal:', e);
+      }
+    } else {
+      window.close();
+    }
+  }
 
   /**
    * Shortcut method to messenger.message().
    */
-  message() {
+  public message(...args) {
     this.messenger.message.apply(this.messenger, arguments);
   }
 }

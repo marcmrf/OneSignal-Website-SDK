@@ -20,7 +20,7 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
 import AltOriginManager from "../managers/AltOriginManager";
 import { AppConfig } from "../models/AppConfig";
-import SubscriptionModalHost from '../modules/SubscriptionModalHost';
+import SubscriptionModalHost from '../modules/frames/SubscriptionModalHost';
 
 declare var OneSignal: any;
 

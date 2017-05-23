@@ -1,10 +1,10 @@
-import Postmam from '../Postmam';
-import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
-import Database from "../services/Database";
-import Event from "../Event";
-import EventHelper from "../helpers/EventHelper";
-import { timeoutPromise } from "../utils";
-import TimeoutError from '../errors/TimeoutError';
+import Postmam from '../../Postmam';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Database from "../../services/Database";
+import Event from "../../Event";
+import EventHelper from "../../helpers/EventHelper";
+import { timeoutPromise } from "../../utils";
+import TimeoutError from '../../errors/TimeoutError';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main
@@ -165,7 +165,7 @@ export default class ProxyFrameHost implements Disposable {
   /**
    * Shortcut method to messenger.message().
    */
-  message() {
+  message(...args) {
     this.messenger.message.apply(this.messenger, arguments);
   }
 }

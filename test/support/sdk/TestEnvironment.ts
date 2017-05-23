@@ -11,6 +11,7 @@ import fetch from 'node-fetch';
 import ServiceWorkerGlobalScope from '../mocks/service-workers/ServiceWorkerGlobalScope';
 import ServiceWorker from '../../../src/service-worker/ServiceWorker';
 import { ServiceWorkerContainer } from '../mocks/service-workers/ServiceWorkerContainer';
+import * as objectAssign from 'object-assign';
 
 
 var global = new Function('return this')();
@@ -131,7 +132,7 @@ export class TestEnvironment {
       config = {};
     // Service workers have a ServiceWorkerGlobalScope set to the 'self' variable, not window
     var serviceWorkerScope = new ServiceWorkerGlobalScope();
-    Object.assign(global, serviceWorkerScope);
+    objectAssign(global, serviceWorkerScope);
     global.skipWaiting = serviceWorkerScope.skipWaiting;
     global.addEventListener = serviceWorkerScope.addEventListener;
     global.trigger = serviceWorkerScope.trigger;
@@ -164,8 +165,8 @@ export class TestEnvironment {
     global.window = global;
     global.localStorage = new DOMStorage(null);
     global.sessionStorage = new DOMStorage(null);
-    var windowDef = await new Promise((resolve, reject) => {
-      jsdom.env({
+    var windowDef = await new Promise<Window>((resolve, reject) => {
+      (jsdom as any).env({
         html: '<!doctype html><html><head></head><body></body></html>',
         url: url,
         userAgent: config.userAgent ? config.userAgent : BrowserUserAgent.Default,
@@ -185,10 +186,10 @@ export class TestEnvironment {
       });
     });
     // Node has its own console; overwriting it will cause issues
-    delete windowDef['console'];
+    delete (windowDef as any)['console'];
     (windowDef as any).navigator.serviceWorker = new ServiceWorkerContainer();
     jsdom.reconfigureWindow(windowDef, { top: windowDef });
-    Object.assign(global, windowDef);
+    objectAssign(global, windowDef);
     return jsdom;
   }
 

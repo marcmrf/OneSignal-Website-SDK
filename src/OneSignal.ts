@@ -53,8 +53,12 @@ import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 import AltOriginManager from './managers/AltOriginManager';
 import { AppConfig } from './models/AppConfig';
 import LegacyManager from './managers/LegacyManager';
-import ProxyFrameHost from './modules/ProxyFrameHost';
-import SubscriptionPopupHost from './modules/SubscriptionPopupHost';
+import ProxyFrameHost from './modules/frames/ProxyFrameHost';
+import SubscriptionPopupHost from './modules/frames/SubscriptionPopupHost';
+import SubscriptionModalHost from './modules/frames/SubscriptionModalHost';
+import SubscriptionPopup from './modules/frames/SubscriptionPopup';
+import SubscriptionModal from './modules/frames/SubscriptionModal';
+import ProxyFrame from './modules/frames/ProxyFrame';
 
 
 export default class OneSignal {
@@ -170,16 +174,16 @@ export default class OneSignal {
           const iframeUrls = AltOriginManager.getOneSignalProxyIframeUrls(appConfig);
           const popupUrls = AltOriginManager.getOneSignalSubscriptionPopupUrls(appConfig).map(url => url.toString());
           for (const iframeUrl of iframeUrls) {
-            const proxyFrame = new ProxyFrameHost(iframeUrl);
+            const proxyFrameHost = new ProxyFrameHost(iframeUrl);
             // A TimeoutError could happen here; it gets rejected out of this entire loop
-            await proxyFrame.load();
-            if (proxyFrame.isSubscribed()) {
-              OneSignal.proxyFrame = proxyFrame;
+            await proxyFrameHost.load();
+            if (proxyFrameHost.isSubscribed()) {
+              OneSignal.proxyFrameHost = proxyFrameHost;
             } else {
-              if (contains(proxyFrame.url.host, '.os.tc')) {
+              if (contains(proxyFrameHost.url.host, '.os.tc')) {
                 // We've already loaded .onesignal.com and they're not subscribed
                 // There's no other frames to check; the user is completely not subscribed
-                OneSignal.proxyFrame = proxyFrame;
+                OneSignal.proxyFrameHost = proxyFrameHost;
               } else {
                 // We've just loaded .onesignal.com and they're not subscribed
                 // Load the .os.tc frame next to check
@@ -798,8 +802,6 @@ export default class OneSignal {
   static swivel = swivel;
   static api = OneSignalApi;
   static indexedDb = IndexedDb;
-  static iframePostmam = null;
-  static popupPostmam = null;
   static mainHelper = MainHelper;
   static subscriptionHelper = SubscriptionHelper;
   static workerHelper = ServiceWorkerHelper;
@@ -809,6 +811,12 @@ export default class OneSignal {
   static testHelper = TestHelper;
   static objectAssign = objectAssign;
   static appConfig = null;
+  static subscriptionPopup: SubscriptionPopup;
+  static subscriptionPopupHost: SubscriptionPopupHost;
+  static subscriptionModal: SubscriptionModal;
+  static subscriptionModalHost: SubscriptionModalHost;
+  static proxyFrameHost: ProxyFrameHost;
+  static proxyFrame: ProxyFrame;
 
   /**
    * The additional path to the worker file.
@@ -839,7 +847,6 @@ export default class OneSignal {
   static isServiceWorkerActive = ServiceWorkerHelper.isServiceWorkerActive;
   static _showingHttpPermissionRequest = false;
   static context: Context;
-  static proxyFrame: ProxyFrameHost;
   static checkAndWipeUserSubscription = function() { }
 
 

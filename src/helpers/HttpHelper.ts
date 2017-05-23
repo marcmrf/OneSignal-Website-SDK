@@ -20,9 +20,9 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { BuildEnvironmentKind } from "../models/BuildEnvironmentKind";
 import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 import AltOriginManager from '../managers/AltOriginManager';
-import SubscriptionModal from '../modules/SubscriptionModal';
-import SubscriptionPopup from "../modules/SubscriptionPopup";
-import ProxyFrame from "../modules/ProxyFrame";
+import SubscriptionModal from '../modules/frames/SubscriptionModal';
+import SubscriptionPopup from "../modules/frames/SubscriptionPopup";
+import ProxyFrame from "../modules/frames/ProxyFrame";
 
 declare var OneSignal: any;
 

@@ -1,15 +1,17 @@
+import ProxyFrameHost from './modules/frames/ProxyFrameHost';
+import OneSignal from './OneSignal';
 import * as log from 'loglevel';
 import Environment from './Environment';
 import { getConsoleStyle, contains, capitalize } from './utils';
 import SdkEnvironment from "./managers/SdkEnvironment";
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
-import ProxyFrameHost from './modules/ProxyFrameHost';
 
 
 
 const SILENT_EVENTS = [
   'notifyButtonHovering',
   'notifyButtonHover',
+
   'notifyButtonButtonClick',
   'notifyButtonLauncherClick',
   'animatedElementHiding',
@@ -103,9 +105,9 @@ export default class Event {
         // But only if the event matches certain events
         if (contains(RETRIGGER_REMOTE_EVENTS, eventName)) {
           if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
-            OneSignal.popupPostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
+            OneSignal.subscriptionPopup.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
           } else {
-            OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
+            OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
           }
         }
       }

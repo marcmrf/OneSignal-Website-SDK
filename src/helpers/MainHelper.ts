@@ -111,10 +111,9 @@ export default class MainHelper {
     if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
       // If we're setting sessionStorage and we're in an Popup, we need to also set sessionStorage on the
       // main page
-      if (!OneSignal.popupPostmam) {
-        return;
+      if (OneSignal.subscriptionPopup) {
+        OneSignal.subscriptionPopup.message(OneSignal.POSTMAM_COMMANDS.BEGIN_BROWSING_SESSION);
       }
-      OneSignal.popupPostmam.message(OneSignal.POSTMAM_COMMANDS.BEGIN_BROWSING_SESSION);
     }
   }
 
@@ -364,7 +363,7 @@ export default class MainHelper {
       }
     });
     OneSignal._channel.on('command.redirect', function handler(context, data) {
-      log.debug(`${SdkEnvironment.getWindowEnv().toString()} Picked up command.redirect to ${data}, forwarding to host page.`, OneSignal.iframePostmam);
+      log.debug(`${SdkEnvironment.getWindowEnv().toString()} Picked up command.redirect to ${data}, forwarding to host page.`);
       if (OneSignal.proxyFrame) {
         OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, data);
       }
