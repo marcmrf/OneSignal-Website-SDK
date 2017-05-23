@@ -1,30 +1,24 @@
-import Postmam from '../Postmam';
-import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
-import Database from "../services/Database";
-import Event from "../Event";
-import EventHelper from "../helpers/EventHelper";
-import { timeoutPromise, unsubscribeFromPush } from "../utils";
-import TimeoutError from '../errors/TimeoutError';
-import { ProxyFrameInitOptions } from '../models/ProxyFrameInitOptions';
-import { Uuid } from '../models/Uuid';
-import ServiceWorkerHelper from "../helpers/ServiceWorkerHelper";
+import Postmam from '../../Postmam';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Database from "../../services/Database";
+import Event from "../../Event";
+import EventHelper from "../../helpers/EventHelper";
+import { timeoutPromise, unsubscribeFromPush } from "../../utils";
+import TimeoutError from '../../errors/TimeoutError';
+import { ProxyFrameInitOptions } from '../../models/ProxyFrameInitOptions';
+import { Uuid } from '../../models/Uuid';
+import ServiceWorkerHelper from "../../helpers/ServiceWorkerHelper";
 import * as objectAssign from 'object-assign';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { InvalidStateReason } from "../errors/InvalidStateError";
-import HttpHelper from "../helpers/HttpHelper";
-import TestHelper from "../helpers/TestHelper";
-import InitHelper from "../helpers/InitHelper";
-import MainHelper from "../helpers/MainHelper";
-import { SubscriptionPopupInitOptions } from "../models/SubscriptionPopupInitOptions";
+import SdkEnvironment from '../../managers/SdkEnvironment';
+import { InvalidStateReason } from "../../errors/InvalidStateError";
+import HttpHelper from "../../helpers/HttpHelper";
+import TestHelper from "../../helpers/TestHelper";
+import InitHelper from "../../helpers/InitHelper";
+import MainHelper from "../../helpers/MainHelper";
 
-/**
- * The actual OneSignal proxy frame contents / implementation, that is loaded
- * into the iFrame URL as subdomain.onesignal.com/webPushIFrame or
- * subdomain.os.tc/webPushIFrame. *
- */
-export default class SubscriptionModal implements Disposable {
-  private messenger: Postmam;
-  private options: SubscriptionPopupInitOptions;
+export default class RemoteFrame implements Disposable {
+  protected messenger: Postmam;
+  protected options: ProxyFrameInitOptions;
 
   constructor(initOptions: any) {
     this.options = {
@@ -45,7 +39,7 @@ export default class SubscriptionModal implements Disposable {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  initialize(): Promise<void> {
+  initialize(): void {
     ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
 
     const creator = window.opener || window.parent;
@@ -66,15 +60,15 @@ export default class SubscriptionModal implements Disposable {
     this.establishCrossOriginMessaging();
   }
 
-  establishCrossOriginMessaging() {
-    this.messenger = new Postmam(window.parent, this.options.originUrl.origin, this.options.originUrl.origin);
-    // The popup in Rails will directly postmessage the host page, without establishing a connection
+  establishCrossOriginMessaging(): void {
+
   }
 
-  dispose() {
+  dispose(): void {
     // Removes all events
     this.messenger.destroy();
   }
+
 
   /**
    * Shortcut method to messenger.message().

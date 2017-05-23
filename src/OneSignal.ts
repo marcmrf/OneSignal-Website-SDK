@@ -834,7 +834,6 @@ export default class OneSignal {
   static _usingNativePermissionHook = false;
   static _initCalled = false;
   static __initAlreadyCalled = false;
-  static modalPostmam: any;
   static httpPermissionRequestPostModal: any;
   static closeNotifications = ServiceWorkerHelper.closeNotifications;
   static isServiceWorkerActive = ServiceWorkerHelper.isServiceWorkerActive;

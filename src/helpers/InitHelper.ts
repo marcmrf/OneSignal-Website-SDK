@@ -20,6 +20,7 @@ import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
 import AltOriginManager from "../managers/AltOriginManager";
 import { AppConfig } from "../models/AppConfig";
+import SubscriptionModalHost from '../modules/SubscriptionModalHost';
 
 declare var OneSignal: any;
 
@@ -284,45 +285,9 @@ export default class InitHelper {
         OneSignal.getNotificationPermission()
       ])
         .then(([appId, isPushEnabled, notificationPermission]) => {
-                const modalUrl = AltOriginManager.getCanonicalSubscriptionUrls(new AppConfig())[0];
-                modalUrl.pathname = 'webPushModal';
-                modalUrl.search = `${MainHelper.getPromptOptionsQueryString()}&id=${appId}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
-               log.info('Opening HTTPS modal prompt:', modalUrl.toString());
-               let modal = MainHelper.createHiddenSubscriptionDomModal(modalUrl.toString());
-
-               var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
-               let receiveFromOrigin = sendToOrigin;
-               OneSignal.modalPostmam = new Postmam(modal, sendToOrigin, receiveFromOrigin);
-               OneSignal.modalPostmam.startPostMessageReceive();
-
-               OneSignal.modalPostmam.once(OneSignal.POSTMAM_COMMANDS.MODAL_LOADED, message => {
-                 MainHelper.showSubscriptionDomModal();
-                 Event.trigger('modalLoaded');
-               });
-               OneSignal.modalPostmam.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_ACCEPTED, message => {
-                 log.debug('User accepted the HTTPS modal prompt.');
-                 OneSignal._sessionInitAlreadyRunning = false;
-                 let iframeModalDom = document.getElementById('OneSignal-iframe-modal');
-                 iframeModalDom.parentNode.removeChild(iframeModalDom);
-                 OneSignal.modalPostmam.destroy();
-                 MainHelper.triggerCustomPromptClicked('granted');
-                 log.debug('Calling setSubscription(true)');
-                 OneSignal.setSubscription(true)
-                          .then(() => SubscriptionHelper.registerForW3CPush(options));
-               });
-               OneSignal.modalPostmam.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_REJECTED, message => {
-                 log.debug('User rejected the HTTPS modal prompt.');
-                 OneSignal._sessionInitAlreadyRunning = false;
-                 let iframeModalDom = document.getElementById('OneSignal-iframe-modal');
-                 iframeModalDom.parentNode.removeChild(iframeModalDom);
-                 OneSignal.modalPostmam.destroy();
-                 MainHelper.triggerCustomPromptClicked('denied');
-               });
-               OneSignal.modalPostmam.once(OneSignal.POSTMAM_COMMANDS.POPUP_CLOSING, message => {
-                 log.info('Detected modal is closing.');
-                 OneSignal.modalPostmam.destroy();
-               });
-             });
+          OneSignal.subscriptionModalHost = new SubscriptionModalHost({ appId: appId }, options);
+          OneSignal.subscriptionModalHost.load();
+        });
     }
     else if ('serviceWorker' in navigator && !SubscriptionHelper.isUsingSubscriptionWorkaround()) { // If HTTPS - Show native prompt
       if (options.__sdkCall && !MainHelper.wasHttpsNativePromptDismissed()) {

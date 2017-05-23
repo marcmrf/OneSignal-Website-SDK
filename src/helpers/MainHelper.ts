@@ -448,34 +448,6 @@ export default class MainHelper {
       result: clickResult
     });
   }
-  static createHiddenSubscriptionDomModal(url) {
-    let iframeContainer = document.createElement('div');
-    iframeContainer.setAttribute('id', 'OneSignal-iframe-modal');
-    iframeContainer.setAttribute('style', 'display:none !important');
-    iframeContainer.innerHTML = '<div id="notif-permission" style="background: rgba(0, 0, 0, 0.7); position: fixed;' +
-      ' top: 0; left: 0; right: 0; bottom: 0; z-index: 3000000000; display: flex;' +
-      ' align-items: center; justify-content: center;"></div>';
-    document.body.appendChild(iframeContainer);
-
-    let iframeContainerStyle = document.createElement('style');
-    iframeContainerStyle.innerHTML = `@media (max-width: 560px) { .OneSignal-permission-iframe { width: 100%; height: 100%;} }`;
-    document.getElementsByTagName('head')[0].appendChild(iframeContainerStyle);
-
-    let iframe = document.createElement("iframe");
-    iframe.className = "OneSignal-permission-iframe";
-    iframe.setAttribute('frameborder', '0');
-    iframe.width = OneSignal._windowWidth.toString();
-    iframe.height = OneSignal._windowHeight.toString();
-    iframe.src = url;
-
-    document.getElementById("notif-permission").appendChild(iframe);
-    return iframe;
-  }
-
-  static showSubscriptionDomModal() {
-    const iframeContainer = document.getElementById('OneSignal-iframe-modal');
-    iframeContainer.setAttribute('style', '');
-  }
 
   static getAppId() {
     if (OneSignal.config.appId) {

@@ -1,37 +1,28 @@
-import Postmam from '../Postmam';
-import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
-import Database from "../services/Database";
-import Event from "../Event";
-import EventHelper from "../helpers/EventHelper";
-import { timeoutPromise, unsubscribeFromPush } from "../utils";
-import TimeoutError from '../errors/TimeoutError';
-import { ProxyFrameInitOptions } from '../models/ProxyFrameInitOptions';
-import { Uuid } from '../models/Uuid';
-import ServiceWorkerHelper from "../helpers/ServiceWorkerHelper";
+import Postmam from '../../Postmam';
+import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
+import Database from "../../services/Database";
+import Event from "../../Event";
+import EventHelper from "../../helpers/EventHelper";
+import { timeoutPromise, unsubscribeFromPush } from "../../utils";
+import TimeoutError from '../../errors/TimeoutError';
+import { ProxyFrameInitOptions } from '../../models/ProxyFrameInitOptions';
+import { Uuid } from '../../models/Uuid';
+import ServiceWorkerHelper from "../../helpers/ServiceWorkerHelper";
 import * as objectAssign from 'object-assign';
-import SdkEnvironment from '../managers/SdkEnvironment';
-import { InvalidStateReason } from "../errors/InvalidStateError";
-import HttpHelper from "../helpers/HttpHelper";
-import TestHelper from "../helpers/TestHelper";
-import InitHelper from "../helpers/InitHelper";
-import MainHelper from "../helpers/MainHelper";
+import SdkEnvironment from '../../managers/SdkEnvironment';
+import { InvalidStateReason } from "../../errors/InvalidStateError";
+import HttpHelper from "../../helpers/HttpHelper";
+import TestHelper from "../../helpers/TestHelper";
+import InitHelper from "../../helpers/InitHelper";
+import MainHelper from "../../helpers/MainHelper";
+import RemoteFrame from './RemoteFrame';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded
  * into the iFrame URL as subdomain.onesignal.com/webPushIFrame or
  * subdomain.os.tc/webPushIFrame. *
  */
-export default class ProxyFrame implements Disposable {
-  private messenger: Postmam;
-  private options: ProxyFrameInitOptions;
-
-  constructor(initOptions: any) {
-    this.options = {
-      appId: new Uuid(initOptions.appId),
-      subdomain: initOptions.subdomainName,
-      originUrl: new URL(initOptions.origin)
-    };
-  }
+export default class ProxyFrame extends RemoteFrame {
 
   /**
    * Loads the messenger on the iFrame to communicate with the host page and
@@ -44,25 +35,8 @@ export default class ProxyFrame implements Disposable {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  initialize(): Promise<void> {
-    ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
-
-    const creator = window.opener || window.parent;
-    if (creator == window) {
-      document.write(`<span style='font-size: 14px; color: red; font-family: sans-serif;'>OneSignal: This page cannot be directly opened, and must be opened as a result of a subscription call.</span>`);
-      return;
-    }
-
-    // The rest of our SDK isn't refactored enough yet to accept typed objects
-    // Within this class, we can use them, but when we assign them to
-    // OneSignal.config, assign the simple string versions
-    const rasterizedOptions = objectAssign(this.options);
-    rasterizedOptions.appId = rasterizedOptions.appId.value;
-    rasterizedOptions.origin = rasterizedOptions.origin.origin;
-    OneSignal.config = rasterizedOptions || {};
-    OneSignal.initialized = true;
-
-    this.establishCrossOriginMessaging();
+  initialize(): void {
+    super.initialize();
     Event.trigger('httpInitialize');
   }
 
@@ -79,11 +53,6 @@ export default class ProxyFrame implements Disposable {
     this.messenger.on(OneSignal.POSTMAN_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest);
     this.messenger.on(OneSignal.POSTMAN_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed);
     this.messenger.listen();
-  }
-
-  dispose() {
-    // Removes all events
-    this.messenger.destroy();
   }
 
   async onMessengerConnect(message: MessengerMessageEvent) {
@@ -179,11 +148,6 @@ export default class ProxyFrame implements Disposable {
     return false;
   }
 
-  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.UNSUBSCRIBE_FROM_PUSH, this.onUnsubscribeFromPush);
-  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, this.onShowHttpPermissionRequest);
-  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest);
-  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed);
-
   async onUnsubscribeFromPush(message: MessengerMessageEvent) {
     log.debug('(Reposted from iFrame -> Host) User unsubscribed but permission granted. Re-prompting the user for push.');
     try {
@@ -219,19 +183,10 @@ export default class ProxyFrame implements Disposable {
     return false;
   }
 
-
   async onMarkPromptDismissed(message: MessengerMessageEvent) {
     log.debug('(Reposted from iFrame -> Host) Marking prompt as dismissed.');
     TestHelper.markHttpsNativePromptDismissed();
     message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
     return false;
-  }
-
-
-  /**
-   * Shortcut method to messenger.message().
-   */
-  message() {
-    this.messenger.message.apply(this.messenger, arguments);
   }
 }
