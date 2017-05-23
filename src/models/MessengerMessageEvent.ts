@@ -1,7 +1,7 @@
 export interface MessengerMessageEvent {
   id: string,
   command: string,
-  data: Object,
+  data: any,
   source: string,
   reply: Function
 }

@@ -17,7 +17,8 @@ import {
   executeCallback,
   md5,
   sha1,
-  awaitSdkEvent
+  awaitSdkEvent,
+  contains
 } from "./utils";
 import {ValidatorUtils} from "./utils/ValidatorUtils";
 import * as objectAssign from "object-assign";
@@ -52,6 +53,7 @@ import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 import AltOriginManager from './managers/AltOriginManager';
 import { AppConfig } from './models/AppConfig';
 import LegacyManager from './managers/LegacyManager';
+import ProxyFrameHost from './modules/ProxyFrameHost';
 
 
 export default class OneSignal {
@@ -150,67 +152,71 @@ export default class OneSignal {
 
     async function __init() {
       if (OneSignal.__initAlreadyCalled) {
-        // Call from window.addEventListener('DOMContentLoaded', () => {
-        // Call from if (document.readyState === 'complete' || document.readyState === 'interactive')
         return;
       } else {
         OneSignal.__initAlreadyCalled = true;
       }
       MainHelper.fixWordpressManifestIfMisplaced();
 
+      OneSignal.on(OneSignal.EVENTS.NATIVE_PROMPT_PERMISSIONCHANGED, EventHelper.onNotificationPermissionChange);
+      OneSignal.on(OneSignal.EVENTS.SUBSCRIPTION_CHANGED, EventHelper._onSubscriptionChanged);
+      OneSignal.on(OneSignal.EVENTS.SDK_INITIALIZED, InitHelper.onSdkInitialized);
+
       if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
         try {
           const appConfig = await AltOriginManager.queryAndSaveAppConfig(new Uuid(OneSignal.config.appId));
           OneSignal.appConfig = appConfig;
-          OneSignal.- = AltOriginManager.getOneSignalProxyIframeUrl(appConfig).toString();
-          OneSignal.popupUrl = AltOriginManager.getOneSignalSubscriptionPopupUrl(appConfig).toString();
+          const iframeUrls = AltOriginManager.getOneSignalProxyIframeUrls(appConfig);
+          const popupUrls = AltOriginManager.getOneSignalSubscriptionPopupUrls(appConfig).map(url => url.toString());
+          for (const iframeUrl of iframeUrls) {
+            const proxyFrame = new ProxyFrameHost(iframeUrl);
+            // A TimeoutError could happen here; it gets rejected out of this entire loop
+            await proxyFrame.load();
+            if (proxyFrame.isSubscribed()) {
+              OneSignal.proxyFrame = proxyFrame;
+            } else {
+              if (contains(proxyFrame.url.host, '.os.tc')) {
+                // We've already loaded .onesignal.com and they're not subscribed
+                // There's no other frames to check; the user is completely not subscribed
+                OneSignal.proxyFrame = proxyFrame;
+              } else {
+                // We've just loaded .onesignal.com and they're not subscribed
+                // Load the .os.tc frame next to check
+                continue;
+              }
+            }
+          }
         } catch (e) {
           if (e && e.code === 2) {
             log.error(`OneSignal: App ID %c${OneSignal.config.appId}`,
               getConsoleStyle('code'),
               ' is not configured for web push.');
             return;
-          }
+          } else throw e;
         }
-      } else {
-        const appConfig = new AppConfig();
-        const modalUrl = AltOriginManager.getCanonicalSubscriptionUrl(appConfig);
-        modalUrl.pathname = 'webPushModal';
-        OneSignal.modalUrl = modalUrl.toString();
       }
 
-      let subdomainPromise = Promise.resolve();
-      if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-        subdomainPromise = HttpHelper.loadSubdomainIFrame()
-                                    .then(() => log.info('Subdomain iFrame loaded'))
-      }
-
-      OneSignal.on(OneSignal.EVENTS.NATIVE_PROMPT_PERMISSIONCHANGED, EventHelper.onNotificationPermissionChange);
-      OneSignal.on(OneSignal.EVENTS.SUBSCRIPTION_CHANGED, EventHelper._onSubscriptionChanged);
-      OneSignal.on(OneSignal.EVENTS.SDK_INITIALIZED, InitHelper.onSdkInitialized);
-      subdomainPromise.then(() => {
-        window.addEventListener('focus', (event) => {
-          // Checks if permission changed everytime a user focuses on the page, since a user has to click out of and back on the page to check permissions
-          MainHelper.checkAndTriggerNotificationPermissionChanged();
-        });
-
-        // If Safari - add 'fetch' pollyfill if it isn't already added.
-        if (Browser.safari && typeof window.fetch == "undefined") {
-          var s = document.createElement('script');
-          s.setAttribute('src', "https://cdnjs.cloudflare.com/ajax/libs/fetch/0.9.0/fetch.js");
-          document.head.appendChild(s);
-        }
-
-        InitHelper.initSaveState()
-          .then(() => InitHelper.saveInitOptions())
-          .then(() => {
-            if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.CustomIframe) {
-              Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
-            } else {
-              InitHelper.internalInit();
-            }
-          });
+      window.addEventListener('focus', (event) => {
+        // Checks if permission changed everytime a user focuses on the page, since a user has to click out of and back on the page to check permissions
+        MainHelper.checkAndTriggerNotificationPermissionChanged();
       });
+
+      // If Safari - add 'fetch' pollyfill if it isn't already added.
+      if (Browser.safari && typeof window.fetch == "undefined") {
+        var s = document.createElement('script');
+        s.setAttribute('src', "https://cdnjs.cloudflare.com/ajax/libs/fetch/0.9.0/fetch.js");
+        document.head.appendChild(s);
+      }
+
+      InitHelper.initSaveState()
+        .then(() => InitHelper.saveInitOptions())
+        .then(() => {
+          if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.CustomIframe) {
+            Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+          } else {
+            InitHelper.internalInit();
+          }
+        });
     }
 
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -376,7 +382,7 @@ export default class OneSignal {
 
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return await new Promise<NotificationPermission>((resolve, reject) => {
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, options, reply => {
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, options, reply => {
           let { status, result } = reply.data;
           if (status === 'resolve') {
             resolve(<NotificationPermission>result);
@@ -416,7 +422,7 @@ export default class OneSignal {
             log.debug('HTTP Permission Request Result:', permission);
             if (permission === 'default') {
               TestHelper.markHttpsNativePromptDismissed();
-              OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, {
+              OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, {
                 permission: permission,
                 forceUpdatePermission: true
               });
@@ -427,7 +433,7 @@ export default class OneSignal {
       } else if (notificationPermission === NotificationPermission.Granted &&
         !(await OneSignal.isPushNotificationsEnabled())) {
         // User unsubscribed but permission granted. Reprompt the user for push on the host page
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.HTTP_PERMISSION_REQUEST_RESUBSCRIBE);
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.HTTP_PERMISSION_REQUEST_RESUBSCRIBE);
       }
     }
   }
@@ -767,10 +773,7 @@ export default class OneSignal {
   static _sessionInitAlreadyRunning = false;
   static _isNotificationEnabledCallback = [];
   static _subscriptionSet = true;
-  static iframeUrl = null;
-  static popupUrl = null;
   static modalUrl = null;
-  static _sessionIframeAdded = false;
   static _windowWidth = 650;
   static _windowHeight = 568;
   static _isNewVisitor = false;
@@ -831,6 +834,7 @@ export default class OneSignal {
   static isServiceWorkerActive = ServiceWorkerHelper.isServiceWorkerActive;
   static _showingHttpPermissionRequest = false;
   static context: Context;
+  static proxyFrame: ProxyFrameHost;
   static checkAndWipeUserSubscription = function() { }
 
 

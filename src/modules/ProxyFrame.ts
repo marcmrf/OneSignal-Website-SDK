@@ -3,133 +3,251 @@ import { MessengerMessageEvent } from '../models/MessengerMessageEvent';
 import Database from "../services/Database";
 import Event from "../Event";
 import EventHelper from "../helpers/EventHelper";
-import { executeAndTimeoutPromiseAfter } from "../utils";
+import { timeoutPromise, unsubscribeFromPush } from "../utils";
+import TimeoutError from '../errors/TimeoutError';
+import { ProxyFrameInitOptions } from '../models/ProxyFrameInitOptions';
+import { Uuid } from '../models/Uuid';
+import ServiceWorkerHelper from "../helpers/ServiceWorkerHelper";
+import * as objectAssign from 'object-assign';
+import SdkEnvironment from '../managers/SdkEnvironment';
+import { InvalidStateReason } from "../errors/InvalidStateError";
+import HttpHelper from "../helpers/HttpHelper";
+import TestHelper from "../helpers/TestHelper";
 
 /**
- * Manager for an instance of the OneSignal proxy frame.
- *
- * This is loaded as subdomain.onesignal.com/webPushIFrame or
- * subdomain.os.tc/webPushIFrame.
- *
+ * The actual OneSignal proxy frame contents / implementation, that is loaded
+ * into the iFrame URL as subdomain.onesignal.com/webPushIFrame or
+ * subdomain.os.tc/webPushIFrame. *
  */
-export default class ProxyFrame {
-
-  private url: URL;
-  private element: HTMLIFrameElement;
+export default class ProxyFrame implements Disposable {
   private messenger: Postmam;
+  private options: ProxyFrameInitOptions;
 
-  // Promise to track whether the frame has finished loading
-  private loadPromise: {
-    promise: Promise<void>,
-    resolver: Function,
-    rejector: Function
+  constructor(initOptions: any) {
+    this.options = {
+      appId: new Uuid(initOptions.appId),
+      subdomain: initOptions.subdomainName,
+      originUrl: new URL(initOptions.origin)
+    };
   }
 
   /**
+   * Loads the messenger on the iFrame to communicate with the host page and
+   * assigns init options to an iFrame-only initialization of OneSignal.
    *
-   * @param origin The URL object describing the origin to load.
+   * Our main host page will wait for all iFrame scripts to complete since the
+   * host page uses the iFrame onload event to begin sending handshake messages
+   * to the iFrame.
+   *
+   * There is no load timeout here; the iFrame initializes it scripts and waits
+   * forever for the first handshake message.
    */
-  constructor(origin: URL) {
-    this.url = origin;
-    this.url.pathname = 'webPushIframe';
-  }
+  initialize(): Promise<void> {
+    ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
 
-  /**
-   * Creates and loads an iFrame on the DOM, replacing any existing iFrame of
-   * the same URL.
-   */
-  load(timeout: Number): Promise<void> {
-    /*
-      This class removes existing iFrames with the same URL. This prevents
-      multiple iFrames to the same origin, which can cause issues with
-      cross-origin messaging.
-    */
-    log.debug('Opening an iFrame to', this.url.toString());
-    const existingInstance = document.querySelector(`iFrame[src='${this.url.toString()}'`);
-    if (existingInstance) {
-      existingInstance.remove();
+    const creator = window.opener || window.parent;
+    if (creator == window) {
+      document.write(`<span style='font-size: 14px; color: red; font-family: sans-serif;'>OneSignal: This page cannot be directly opened, and must be opened as a result of a subscription call.</span>`);
+      return;
     }
 
-    const iframe = document.createElement("iframe");
-    iframe.style.display = "none";
-    iframe.src = this.url.toString();
-    (iframe as any).sandbox = 'allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation';
-    iframe.onload = this.onFrameLoad;
-    (this as any).loadPromise = {
-      promise: new Promise((resolve, reject) => {
-        this.loadPromise.resolver = resolve;
-        this.loadPromise.rejector = reject;
-      })
-    };
-    document.body.appendChild(iframe);
+    // The rest of our SDK isn't refactored enough yet to accept typed objects
+    // Within this class, we can use them, but when we assign them to
+    // OneSignal.config, assign the simple string versions
+    const rasterizedOptions = objectAssign(this.options);
+    rasterizedOptions.appId = rasterizedOptions.appId.value;
+    rasterizedOptions.origin = rasterizedOptions.origin.origin;
+    OneSignal.config = rasterizedOptions || {};
+    OneSignal.initialized = true;
 
-    this.element = iframe;
-    return executeAndTimeoutPromiseAfter(this.loadPromise.promise, timeout)
-      .catch(() => log.warn(`OneSignal: Could not load iFrame with URL ${this.url.toString()}. Please check that your 'subdomainName' matches that on your OneSignal Chrome platform settings. Also please check that your Site URL on your Chrome platform settings is a valid reachable URL pointing to your site.`));
-  }
-
-  onFrameLoad(e: UIEvent): void {
-    log.debug('iFrame at', this.url.toString(), 'finished loading (onload event).');
     this.establishCrossOriginMessaging();
+    Event.trigger('httpInitialize');
   }
 
   establishCrossOriginMessaging() {
-    this.messenger = new Postmam(this.element.contentWindow, this.url.toString(), this.url.toString());
-    this.messenger.on('connect', this.onMessengerConnect);
-    this.messenger.connect();
+    this.messenger = new Postmam(window, this.options.originUrl.origin, this.options.originUrl.origin);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.CONNECTED, this.onMessengerConnect);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.IFRAME_POPUP_INITIALIZE, this.onProxyFrameInitializing);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, this.onRemoteNotificationPermission);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_GET, this.onRemoteDatabaseGet);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_PUT, this.onRemoteDatabasePut);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_REMOVE, this.onRemoteDatabaseRemove);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.UNSUBSCRIBE_FROM_PUSH, this.onUnsubscribeFromPush);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, this.onShowHttpPermissionRequest);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest);
+    this.messenger.on(OneSignal.POSTMAN_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed);
+    this.messenger.listen();
   }
 
-  async onMessengerConnect(e: MessengerMessageEvent) {
-    log.debug('iFrame at', this.url.toString(), 'connected their messenger to ours.');
+  dispose() {
+    // Removes all events
+    this.messenger.destroy();
+  }
 
-    let defaultUrl = await Database.get<string>('Options', 'defaultUrl');
-    let defaultTitle = await Database.get<string>('Options', 'defaultTitle');
+  async onMessengerConnect(message: MessengerMessageEvent) {
+    log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Successfully established cross-origin communication.`);
+    return false;
+  }
 
-    defaultUrl = defaultUrl ? defaultUrl : location.href;
-    defaultTitle = defaultTitle ? defaultTitle : document.title;
+  async onProxyFrameInitializing(message: MessengerMessageEvent) {
+    log.info(`(${SdkEnvironment.getWindowEnv().toString()}) The iFrame has just received initOptions from the host page!`);
 
-    this.messenger.message(OneSignal.POSTMAM_COMMANDS.IFRAME_POPUP_INITIALIZE, {
-      hostInitOptions: JSON.parse(JSON.stringify(OneSignal.config)), // Removes functions and unmessageable objects
-      defaultUrl: defaultUrl,
-      pageUrl: window.location.href,
-      pageTitle: defaultTitle,
-    }, reply => {
-      if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
-        this.loadPromise.resolver();
-        Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+    OneSignal.config = objectAssign(message.data.hostInitOptions, OneSignal.config, {
+      defaultUrl: message.data.defaultUrl,
+      pageUrl: message.data.pageUrl,
+      pageTitle: message.data.pageTitle
+    });
+
+    InitHelper.installNativePromptPermissionChangedHook();
+
+    let opPromises = [];
+    if (options.continuePressed) {
+      opPromises.push(OneSignal.setSubscription(true));
+    }
+    // 3/30/16: For HTTP sites, put the host page URL as default URL if one doesn't exist already
+    opPromises.push(Database.get('Options', 'defaultUrl').then(defaultUrl => {
+      if (!defaultUrl) {
+        return Database.put('Options', {key: 'defaultUrl', value: new URL(OneSignal.config.defaultUrl).origin});
       }
-      return false;
-    });
+    }));
+
+    /**
+     * When a user is on http://example.com and receives a notification, we want to open a new window only if the
+     * notification's URL is different from http://example.com. The service worker, which only controls
+     * subdomain.onesignal.com, doesn't know that the host URL is http://example.com. Although defaultUrl above
+     * sets the HTTP's origin, this can be modified if users call setDefaultTitle(). lastKnownHostUrl therefore
+     * stores the last visited full page URL.
+     */
+    opPromises.push(
+        Database.put('Options', {key: 'lastKnownHostUrl', value: OneSignal.config.pageUrl})
+    );
+
+    opPromises.push(InitHelper.initSaveState());
+    opPromises.push(InitHelper.storeInitialValues());
+    opPromises.push(InitHelper.saveInitOptions());
+    Promise.all(opPromises as any[])
+            .then(() => {
+              /* 3/20/16: In the future, if navigator.serviceWorker.ready is unusable inside of an insecure iFrame host, adding a message event listener will still work. */
+              //if (navigator.serviceWorker) {
+              //log.info('We have added an event listener for service worker messages.', SdkEnvironment.getWindowEnv().toString());
+              //navigator.serviceWorker.addEventListener('message', function(event) {
+              //  log.info('Wow! We got a message!', event);
+              //});
+              //}
+
+              if (navigator.serviceWorker && window.location.protocol === 'https:') {
+                try {
+                  MainHelper.establishServiceWorkerChannel();
+                } catch (e) {
+                  log.error(`Error interacting with Service Worker inside an HTTP-hosted iFrame:`, e);
+                }
+              }
+
+              message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
+            });
   }
 
-  onRemoteRetriggerEvent(message: MessengerMessageEvent) {
-    // e.g. { eventName: 'subscriptionChange', eventData: true}
-    let {eventName, eventData} = (message.data as any);
-    Event.trigger(eventName, eventData, message.source);
+  async onRemoteNotificationPermission(message: MessengerMessageEvent) {
+    const permission = await OneSignal.getNotificationPermission();
+    message.reply(permission);
     return false;
   }
 
-  onRemoteNotificationPermissionChanged(message: MessengerMessageEvent) {
-    let {forceUpdatePermission} = (message.data as any);
-    EventHelper.triggerNotificationPermissionChanged(forceUpdatePermission);
+  async onRemoteDatabaseGet(message: MessengerMessageEvent) {
+    // retrievals is an array of key-value pairs e.g. [{table: 'Ids', keys:
+    // 'userId'}, {table: 'Ids', keys: 'registrationId'}]
+    const retrievals: Array<{table, key}> = message.data;
+    const retrievalOpPromises = [];
+    for (let retrieval of retrievals) {
+      const {table, key} = retrieval;
+      retrievalOpPromises.push(Database.get(table, key));
+    }
+    const results = await Promise.all(retrievalOpPromises);
+    message.reply(results);
     return false;
   }
 
-  onRequestHostUrl(message: MessengerMessageEvent) {
-    message.reply(location.href);
+  async onRemoteDatabasePut(message: MessengerMessageEvent) {
+    // insertions is an array of key-value pairs e.g. [table: {'Options': keypath: {key: persistNotification, value: '...'}}, {table: 'Ids', keypath: {type: 'userId', id: '...'}]
+    // It's formatted that way because our IndexedDB database is formatted that way
+    const insertions: Array<{table, keypath}> = message.data;
+    let insertionOpPromises = [];
+    for (let insertion of insertions) {
+      let {table, keypath} = insertion;
+      insertionOpPromises.push(Database.put(table, keypath));
+    }
+    const results = await Promise.all(insertionOpPromises);
+    message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
     return false;
   }
 
-  onServiceWorkerCommandRedirect(message: MessengerMessageEvent) {
-    window.location.href = (message.data as any);
+  async onRemoteDatabaseRemove(message: MessengerMessageEvent) {
+    // removals is an array of key-value pairs e.g. [table: {'Options': keypath: {key: persistNotification, value: '...'}}, {table: 'Ids', keypath: {type: 'userId', id: '...'}]
+    // It's formatted that way because our IndexedDB database is formatted that way
+    const removals: Array<{table, keypath}> = message.data;
+    let removalOpPromises = [];
+    for (let removal of removals) {
+      let {table, keypath} = removal;
+      removalOpPromises.push(Database.remove(table, keypath));
+    }
+    const results = await Promise.all(removalOpPromises);
+    message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
     return false;
   }
 
-  onHttpPermissionRequestResubscribe(message: MessengerMessageEvent) {
+  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.UNSUBSCRIBE_FROM_PUSH, this.onUnsubscribeFromPush);
+  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, this.onShowHttpPermissionRequest);
+  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest);
+  // this.messenger.on(OneSignal.POSTMAN_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed);
+
+  async onUnsubscribeFromPush(message: MessengerMessageEvent) {
     log.debug('(Reposted from iFrame -> Host) User unsubscribed but permission granted. Re-prompting the user for push.');
-    OneSignal.showHttpPrompt({ __sdkCall: true, __useHttpPermissionRequestStyle: true }).catch(e => {
-      log.debug('[Resubscribe Prompt Error]', e);
-    });
+    try {
+      await unsubscribeFromPush();
+      message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
+    } catch (e) {
+      log.debug('Failed to unsubscribe from push remotely:', e);
+    }
+  }
+
+  async onShowHttpPermissionRequest(message: MessengerMessageEvent) {
+    log.debug(SdkEnvironment.getWindowEnv().toString() + " Calling showHttpPermissionRequest() inside the iFrame, proxied from host.");
+    let options = {};
+    if (message.data) {
+      options = message.data;
+    }
+    log.debug(SdkEnvironment.getWindowEnv().toString() + 'HTTP permission request showing, message data:', message);
+    try {
+      const result = await OneSignal.showHttpPermissionRequest(options);
+      message.reply({ status: 'resolve', result: result });
+    } catch (e) {
+      if (e && e.reason === InvalidStateReason[InvalidStateReason.PushPermissionAlreadyGranted]) {
+      // Don't do anything for this error, too common
+      } else {
+        message.reply({ status: 'reject', result: e })
+      }
+    }
+  }
+
+  async onIsShowingHttpPermissionRequest(message: MessengerMessageEvent) {
+    const isShowingHttpPermReq = await HttpHelper.isShowingHttpPermissionRequest();
+    message.reply(isShowingHttpPermReq);
     return false;
+  }
+
+
+  async onMarkPromptDismissed(message: MessengerMessageEvent) {
+    log.debug('(Reposted from iFrame -> Host) Marking prompt as dismissed.');
+    TestHelper.markHttpsNativePromptDismissed();
+    message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
+    return false;
+  }
+
+
+  /**
+   * Shortcut method to messenger.message().
+   */
+  message() {
+    this.messenger.message.apply(this.messenger, arguments);
   }
 }

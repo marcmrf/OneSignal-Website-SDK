@@ -18,6 +18,8 @@ import OneSignalApi from "../OneSignalApi";
 import { Uuid } from '../models/Uuid';
 import SdkEnvironment from '../managers/SdkEnvironment';
 import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
+import AltOriginManager from "../managers/AltOriginManager";
+import { AppConfig } from "../models/AppConfig";
 
 declare var OneSignal: any;
 
@@ -281,10 +283,12 @@ export default class InitHelper {
         OneSignal.isPushNotificationsEnabled(),
         OneSignal.getNotificationPermission()
       ])
-             .then(([appId, isPushEnabled, notificationPermission]) => {
-               let modalUrl = `${OneSignal.modalUrl}?${MainHelper.getPromptOptionsQueryString()}&id=${appId}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
-               log.info('Opening HTTPS modal prompt:', modalUrl);
-               let modal = MainHelper.createHiddenSubscriptionDomModal(modalUrl);
+        .then(([appId, isPushEnabled, notificationPermission]) => {
+                const modalUrl = AltOriginManager.getCanonicalSubscriptionUrls(new AppConfig())[0];
+                modalUrl.pathname = 'webPushModal';
+                modalUrl.search = `${MainHelper.getPromptOptionsQueryString()}&id=${appId}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
+               log.info('Opening HTTPS modal prompt:', modalUrl.toString());
+               let modal = MainHelper.createHiddenSubscriptionDomModal(modalUrl.toString());
 
                var sendToOrigin = SdkEnvironment.getOneSignalApiUrl().origin;
                let receiveFromOrigin = sendToOrigin;

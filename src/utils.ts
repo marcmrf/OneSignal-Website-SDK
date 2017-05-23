@@ -7,6 +7,7 @@ import PushNotSupportedError from "./errors/PushNotSupportedError";
 import SubscriptionHelper from "./helpers/SubscriptionHelper";
 import SdkEnvironment from "./managers/SdkEnvironment";
 import { WindowEnvironmentKind } from "./models/WindowEnvironmentKind";
+import TimeoutError from "./errors/TimeoutError";
 
 
 export function isArray(variable) {
@@ -263,15 +264,9 @@ export function nothing(): Promise<any> {
   return Promise.resolve();
 }
 
-export function executeAndTimeoutPromiseAfter(promise, milliseconds, displayError?) {
-  let timeoutPromise = new Promise(resolve => setTimeout(() => resolve('promise-timed-out'), milliseconds));
-  return Promise.race([promise, timeoutPromise]).then(value => {
-    if (value === 'promise-timed-out') {
-      log.info(displayError || `Promise ${promise} timed out after ${milliseconds} ms.`);
-      return Promise.reject(displayError || `Promise ${promise} timed out after ${milliseconds} ms.`);
-    }
-    else return value;
-  });
+export async function timeoutPromise(promise: Promise<any>, milliseconds: number): Promise<TimeoutError | any> {
+  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(new TimeoutError()), milliseconds));
+  return Promise.race([promise, timeoutPromise]);
 }
 
 export function when(condition, promiseIfTrue, promiseIfFalse) {
@@ -364,7 +359,7 @@ export function unsubscribeFromPush() {
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return new Promise((resolve, reject) => {
         log.debug("Unsubscribe from push got called, and we're going to remotely execute it in HTTPS iFrame.");
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, null, reply => {
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, null, reply => {
           log.debug("Unsubscribe from push succesfully remotely executed.");
           if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
             resolve();

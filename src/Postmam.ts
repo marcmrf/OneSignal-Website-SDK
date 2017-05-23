@@ -295,4 +295,12 @@ export default class Postmam {
             this.receiveFromOrigin === '*' ||
             contains(otherAllowedOrigins, messageOrigin));
   }
+
+  on(...args) {
+    // Overriden by event emitter lib
+  }
+
+  once(...args) {
+    // Overriden by event emitter lib
+  }
 }

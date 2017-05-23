@@ -4,7 +4,7 @@ import Event from "../Event";
 import Database from "../services/Database";
 import {
   getConsoleStyle,
-  executeAndTimeoutPromiseAfter,
+  timeoutPromise,
   unsubscribeFromPush
 } from "../utils";
 import * as objectAssign from "object-assign";
@@ -29,7 +29,7 @@ export default class HttpHelper {
   static async isShowingHttpPermissionRequest() {
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return await new Promise((resolve, reject) => {
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
           resolve(reply.data);
         });
       });
@@ -242,23 +242,7 @@ must be opened as a result of a subscription call.</span>`);
     });
   }
 
-  /**
-   * Loads the iFrame with the OneSignal subdomain on the page so that subsequent SDK tasks can run on the service-worker-controlled origin.
-   */
-  static loadSubdomainIFrame() {
-    let subdomainLoadPromise = new Promise((resolve, reject) => {
-      log.debug(`Called %cloadSubdomainIFrame()`, getConsoleStyle('code'));
-
-      log.debug('Loading subdomain iFrame:', OneSignal.iframeUrl);
-      // TODO: Being replaced
-      };
-      OneSignal._sessionIframeAdded = true;
-    });
-    return executeAndTimeoutPromiseAfter(subdomainLoadPromise, 15000)
-      .catch(() => log.warn(`OneSignal: Could not load iFrame with URL ${OneSignal.iframeUrl}. Please check that your 'subdomainName' matches that on your OneSignal Chrome platform settings. Also please check that your Site URL on your Chrome platform settings is a valid reachable URL pointing to your site.`));
-  }
-
-  static loadPopup(options) {
+  static loadPopup(url, options) {
     // Important: Don't use any promises until the window is opened, otherwise the popup will be blocked
     const sendToOrigin = AltOriginManager.getOneSignalSubscriptionPopupUrl(OneSignal.appConfig).origin;
     let postData = objectAssign({}, MainHelper.getPromptOptionsPostHash(), {
@@ -278,8 +262,8 @@ must be opened as a result of a subscription call.</span>`);
         top: 9999999,
       };
     }
-    log.info(`Opening popup window to ${OneSignal.popupUrl} with POST data:`, OneSignal.popupUrl);
-    var subdomainPopup = MainHelper.openSubdomainPopup(OneSignal.popupUrl, postData, overrides);
+    log.info(`Opening popup window to ${url} with POST data:`, url);
+    var subdomainPopup = MainHelper.openSubdomainPopup(url, postData, overrides);
 
     OneSignal.popupPostmam = new Postmam(subdomainPopup, sendToOrigin, sendToOrigin);
     OneSignal.popupPostmam.startPostMessageReceive();

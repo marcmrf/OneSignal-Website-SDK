@@ -5,11 +5,11 @@ import { ServiceWorkerConfig } from "./ServiceWorkerConfig";
 export class AppConfig {
     appId: Uuid;
     subdomain: string;
-    autoRegister: boolean;
-    serviceWorkerConfig: ServiceWorkerConfig;
+    autoRegister?: boolean;
+    serviceWorkerConfig?: ServiceWorkerConfig;
     /**
      * Describes whether the subdomain HTTP users subscribe to should belong to
      * the legacy domain onesignal.com, or the newer domain os.tc.
      */
-    useLegacyDomain: boolean;
+    useLegacyDomain?: boolean;
 }

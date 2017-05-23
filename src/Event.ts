@@ -3,6 +3,7 @@ import Environment from './Environment';
 import { getConsoleStyle, contains, capitalize } from './utils';
 import SdkEnvironment from "./managers/SdkEnvironment";
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
+import ProxyFrameHost from './modules/ProxyFrameHost';
 
 
 
@@ -104,7 +105,7 @@ export default class Event {
           if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
             OneSignal.popupPostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
           } else {
-            OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
+            OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
           }
         }
       }

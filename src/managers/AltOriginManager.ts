@@ -27,50 +27,66 @@ export default class AltOriginManager {
   }
 
   /**
-   * Returns the URL in which the push subscription and IndexedDb site data
-   * will be stored.
+   * Returns the array of possible URL in which the push subscription and
+   * IndexedDb site data will be stored.
    *
-   * For native HTTPS sites not using a subdomain of our service, this is
-   * the top-level URL.
+   * For native HTTPS sites not using a subdomain of our service, this is the
+   * top-level URL.
    *
    * For sites using a subdomain of our service, this URL was typically
    * subdomain.onesignal.com, until we switched to subdomain.os.tc for a shorter
    * origin to fit into Mac's native notifications on Chrome 59+.
+   *
+   * Because a user may be subscribed to subdomain.onesignal.com or
+   * subdomain.os.tc, we have to load both in certain scenarios to determine
+   * which the user is subscribed to; hence, this method returns an array of
+   * possible URLs.
    */
-  static getCanonicalSubscriptionUrl(config: AppConfig,
-                                     buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv(),
-                                     isSubscribed: boolean): URL {
-    let url = SdkEnvironment.getOneSignalApiUrl(buildEnv);
-    url.pathname = '';
-    url.host = [config.subdomain, url.host].join('.');
+  static getCanonicalSubscriptionUrls(config: AppConfig,
+                                      buildEnv: BuildEnvironmentKind = SdkEnvironment.getBuildEnv()
+                                     ): Array<URL> {
+    let urls = [];
 
-    if (!config.useLegacyDomain && buildEnv === BuildEnvironmentKind.Production) {
-      url.host = [config.subdomain, 'os.tc'].join('.');
-    } else if (config.useLegacyDomain)
-    // TODO: This block below is for testing purposes only. Remove for production.
-    // For use with Charles proxy only
+    let legacyDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
+    legacyDomainUrl.host = [config.subdomain, legacyDomainUrl.host].join('.');
+    urls.push(legacyDomainUrl);
+
     if (!config.useLegacyDomain) {
-      url.host = [config.subdomain, 'os.tc'].join('.');
+      let osTcDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
+      osTcDomainUrl.host = [config.subdomain, 'os.tc'].join('.');
+      urls.push(osTcDomainUrl);
     }
 
-    return url;
+    for (const url of urls) {
+      url.pathname = '';
+    }
+
+    return urls;
   }
 
   /**
    * Returns the URL of the OneSignal proxy iFrame helper.
    */
-  static getOneSignalProxyIframeUrl(config: AppConfig): URL {
-    const url = AltOriginManager.getCanonicalSubscriptionUrl(config);
-    url.pathname = 'webPushIframe';
-    return url;
+  static getOneSignalProxyIframeUrls(config: AppConfig): Array<URL> {
+    const urls = AltOriginManager.getCanonicalSubscriptionUrls(config);
+
+    for (const url of urls) {
+      url.pathname = 'webPushIframe';
+    }
+
+    return urls;
   }
 
   /**
    * Returns the URL of the OneSignal subscription popup.
    */
-  static getOneSignalSubscriptionPopupUrl(config: AppConfig): URL {
-    const url = AltOriginManager.getCanonicalSubscriptionUrl(config);
-    url.pathname = 'subscribe';
-    return url;
+  static getOneSignalSubscriptionPopupUrls(config: AppConfig): Array<URL> {
+    const urls = AltOriginManager.getCanonicalSubscriptionUrls(config);
+
+    for (const url of urls) {
+      url.pathname = 'subscribe';
+    }
+
+    return urls;
   }
 }

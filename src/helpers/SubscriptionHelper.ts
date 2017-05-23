@@ -3,7 +3,7 @@ import * as log from "loglevel";
 import Event from "../Event";
 import Database from "../services/Database";
 import * as Browser from "bowser";
-import {getConsoleStyle, contains, executeAndTimeoutPromiseAfter} from "../utils";
+import {getConsoleStyle, contains, timeoutPromise} from "../utils";
 import MainHelper from "./MainHelper";
 import ServiceWorkerHelper from "./ServiceWorkerHelper";
 import EventHelper from "./EventHelper";
@@ -11,6 +11,7 @@ import PushPermissionNotGrantedError from "../errors/PushPermissionNotGrantedErr
 import TestHelper from "./TestHelper";
 import SdkEnvironment from "../managers/SdkEnvironment";
 import { WindowEnvironmentKind } from "../models/WindowEnvironmentKind";
+import TimeoutError from '../errors/TimeoutError';
 
 
 export default class SubscriptionHelper {
@@ -181,10 +182,9 @@ export default class SubscriptionHelper {
                if (permission !== "granted") {
                  throw new PushPermissionNotGrantedError();
                } else {
-                 return executeAndTimeoutPromiseAfter(
+                 return timeoutPromise(
                    serviceWorkerRegistration.pushManager.subscribe({userVisibleOnly: true}),
-                   15000,
-                   "A possible Chrome bug (https://bugs.chromium.org/p/chromium/issues/detail?id=623062) is preventing this subscription from completing."
+                   15000
                  );
                }
              })
@@ -275,6 +275,9 @@ export default class SubscriptionHelper {
              })
              .catch(function (e) {
                OneSignal._sessionInitAlreadyRunning = false;
+               if (e instanceof TimeoutError) {
+                 log.error("A possible Chrome bug (https://bugs.chromium.org/p/chromium/issues/detail?id=623062) is preventing this subscription from completing.");
+               }
                if (e.message === 'Registration failed - no sender id provided' || e.message === 'Registration failed - manifest empty or missing') {
                  let manifestDom = document.querySelector('link[rel=manifest]');
                  if (manifestDom) {

@@ -86,7 +86,7 @@ export default class Database {
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker &&
           SubscriptionHelper.isUsingSubscriptionWorkaround() &&
           SdkEnvironment.getTestEnv() === TestEnvironmentKind.None) {
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_GET, [{
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_GET, [{
           table: table,
           key: key
         }], reply => {
@@ -111,7 +111,7 @@ export default class Database {
       if (SdkEnvironment.getWindowEnv() !== WindowEnvironmentKind.ServiceWorker &&
         SubscriptionHelper.isUsingSubscriptionWorkaround() &&
         SdkEnvironment.getTestEnv() === TestEnvironmentKind.None) {
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_PUT, [{table: table, keypath: keypath}], reply => {
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_PUT, [{table: table, keypath: keypath}], reply => {
           if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
             resolve();
           } else {
@@ -135,7 +135,7 @@ export default class Database {
       SubscriptionHelper.isUsingSubscriptionWorkaround() &&
       SdkEnvironment.getTestEnv() === TestEnvironmentKind.None) {
       return new Promise((resolve, reject) => {
-        OneSignal.iframePostmam.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_REMOVE, [{ table: table, keypath: keypath }], reply => {
+        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_REMOVE, [{ table: table, keypath: keypath }], reply => {
           if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
             resolve();
           } else {
