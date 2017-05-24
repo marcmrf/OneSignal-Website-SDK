@@ -1,11 +1,12 @@
+import TimeoutError from './errors/TimeoutError';
 import Environment from "./Environment";
 import OneSignalApi from "./OneSignalApi";
 import IndexedDb from "./services/IndexedDb";
-import * as log from "loglevel";
+import * as log from 'loglevel';
 import Event from "./Event";
-import * as Cookie from "js-cookie";
+import * as Cookie from 'js-cookie';
 import Database from "./services/Database";
-import * as Browser from "bowser";
+import * as Browser from 'bowser';
 import {
   isPushNotificationsSupported,
   logMethodCall,
@@ -21,10 +22,10 @@ import {
   contains
 } from "./utils";
 import {ValidatorUtils} from "./utils/ValidatorUtils";
-import * as objectAssign from "object-assign";
-import * as EventEmitter from "wolfy87-eventemitter";
-import * as heir from "heir";
-import * as swivel from "swivel";
+import * as objectAssign from 'object-assign';
+import * as EventEmitter from 'wolfy87-eventemitter';
+import * as heir from 'heir';
+import * as swivel from 'swivel';
 import EventHelper from "./helpers/EventHelper";
 import MainHelper from "./helpers/MainHelper";
 import Popover from "./popover/Popover";
@@ -59,6 +60,7 @@ import SubscriptionModalHost from './modules/frames/SubscriptionModalHost';
 import SubscriptionPopup from './modules/frames/SubscriptionPopup';
 import SubscriptionModal from './modules/frames/SubscriptionModal';
 import ProxyFrame from './modules/frames/ProxyFrame';
+import { SdkInitError, SdkInitErrorKind } from './errors/SdkInitError';
 
 
 export default class OneSignal {
@@ -135,7 +137,7 @@ export default class OneSignal {
    * Initializes the SDK, called by the developer.
    * @PublicApi
    */
-  static init(options) {
+  static async init(options) {
     logMethodCall('init', options);
 
     ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
@@ -149,6 +151,17 @@ export default class OneSignal {
     OneSignal.config = objectAssign({
       path: '/'
     }, options);
+
+    let appConfig;
+    try {
+      appConfig = await OneSignalApi.getAppConfig(new Uuid(options.appId));
+    } catch (e) {
+      if (e && e.code === 2) {
+        throw new SdkInitError(SdkInitErrorKind.AppNotConfiguredForWebPush);
+      } else throw e;
+    }
+    OneSignal.config.subdomainName = appConfig.subdomain;
+    OneSignal.config.safari_web_id = appConfig.safariWebId;
 
     if (Browser.safari && !OneSignal.config.safari_web_id) {
       log.warn("OneSignal: Required parameter %csafari_web_id", getConsoleStyle('code'), 'was not passed to OneSignal.init(), skipping SDK initialization.');
@@ -169,34 +182,13 @@ export default class OneSignal {
 
       if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
         try {
-          const appConfig = await AltOriginManager.queryAndSaveAppConfig(new Uuid(OneSignal.config.appId));
           OneSignal.appConfig = appConfig;
-          const iframeUrls = AltOriginManager.getOneSignalProxyIframeUrls(appConfig);
-          const popupUrls = AltOriginManager.getOneSignalSubscriptionPopupUrls(appConfig).map(url => url.toString());
-          for (const iframeUrl of iframeUrls) {
-            const proxyFrameHost = new ProxyFrameHost(iframeUrl);
-            // A TimeoutError could happen here; it gets rejected out of this entire loop
-            await proxyFrameHost.load();
-            if (proxyFrameHost.isSubscribed()) {
-              OneSignal.proxyFrameHost = proxyFrameHost;
-            } else {
-              if (contains(proxyFrameHost.url.host, '.os.tc')) {
-                // We've already loaded .onesignal.com and they're not subscribed
-                // There's no other frames to check; the user is completely not subscribed
-                OneSignal.proxyFrameHost = proxyFrameHost;
-              } else {
-                // We've just loaded .onesignal.com and they're not subscribed
-                // Load the .os.tc frame next to check
-                continue;
-              }
-            }
-          }
+          OneSignal.proxyFrameHost = await AltOriginManager.discoverAltOrigin(appConfig);
         } catch (e) {
-          if (e && e.code === 2) {
-            log.error(`OneSignal: App ID %c${OneSignal.config.appId}`,
-              getConsoleStyle('code'),
-              ' is not configured for web push.');
-            return;
+          if (e) {
+            if (e instanceof TimeoutError) {
+              log.warn('Check the Site URL of your web push config on your onesignal.com dashboard. Only sites with that URL are allowed to use your subdomain.');
+            }
           } else throw e;
         }
       }
@@ -394,7 +386,7 @@ export default class OneSignal {
 
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return await new Promise<NotificationPermission>((resolve, reject) => {
-        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, options, reply => {
+        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, options, reply => {
           let { status, result } = reply.data;
           if (status === 'resolve') {
             resolve(<NotificationPermission>result);

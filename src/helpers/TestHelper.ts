@@ -50,7 +50,7 @@ export default class TestHelper {
      */
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       await new Promise((resolve, reject) => {
-        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.MARK_PROMPT_DISMISSED, {}, reply => {
+        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.MARK_PROMPT_DISMISSED, {}, reply => {
           if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
             resolve();
           } else {

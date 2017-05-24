@@ -264,7 +264,7 @@ export function nothing(): Promise<any> {
 }
 
 export async function timeoutPromise(promise: Promise<any>, milliseconds: number): Promise<TimeoutError | any> {
-  const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(new TimeoutError()), milliseconds));
+  const timeoutPromise = new Promise(reject => setTimeout(() => reject(new TimeoutError()), milliseconds));
   return Promise.race([promise, timeoutPromise]);
 }
 
@@ -358,7 +358,7 @@ export function unsubscribeFromPush() {
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return new Promise((resolve, reject) => {
         log.debug("Unsubscribe from push got called, and we're going to remotely execute it in HTTPS iFrame.");
-        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, null, reply => {
+        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, null, reply => {
           log.debug("Unsubscribe from push succesfully remotely executed.");
           if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
             resolve();

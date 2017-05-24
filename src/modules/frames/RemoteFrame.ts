@@ -16,6 +16,7 @@ import TestHelper from "../../helpers/TestHelper";
 import InitHelper from "../../helpers/InitHelper";
 import MainHelper from "../../helpers/MainHelper";
 import SubscriptionHelper from '../../helpers/SubscriptionHelper';
+import * as log from 'loglevel';
 
 export default class RemoteFrame implements Disposable {
   protected messenger: Postmam;

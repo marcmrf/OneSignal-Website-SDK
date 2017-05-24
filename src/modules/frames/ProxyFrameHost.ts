@@ -5,6 +5,7 @@ import Event from "../../Event";
 import EventHelper from "../../helpers/EventHelper";
 import { timeoutPromise } from "../../utils";
 import TimeoutError from '../../errors/TimeoutError';
+import * as log from 'loglevel';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main
@@ -62,12 +63,11 @@ export default class ProxyFrameHost implements Disposable {
     iframe.src = this.url.toString();
     (iframe as any).sandbox = 'allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation';
     iframe.onload = this.onFrameLoad;
-    (this as any).loadPromise = {
-      promise: new Promise((resolve, reject) => {
+    (this as any).loadPromise = {};
+    (this as any).loadPromise = new Promise((resolve, reject) => {
         this.loadPromise.resolver = resolve;
         this.loadPromise.rejector = reject;
-      })
-    };
+    });
     document.body.appendChild(iframe);
 
     this.element = iframe;
@@ -158,8 +158,8 @@ export default class ProxyFrameHost implements Disposable {
     return false;
   }
 
-  isSubscribed() {
-
+  isSubscribed(): Promise<boolean> {
+    return OneSignal.isPushNotificationsEnabled();
   }
 
   /**

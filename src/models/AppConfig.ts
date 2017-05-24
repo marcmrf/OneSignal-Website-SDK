@@ -12,4 +12,5 @@ export class AppConfig {
      * the legacy domain onesignal.com, or the newer domain os.tc.
      */
     useLegacyDomain?: boolean;
+    safariWebId?: string;
 }

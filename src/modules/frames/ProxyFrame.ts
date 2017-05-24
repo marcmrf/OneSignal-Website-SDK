@@ -16,6 +16,7 @@ import TestHelper from "../../helpers/TestHelper";
 import InitHelper from "../../helpers/InitHelper";
 import MainHelper from "../../helpers/MainHelper";
 import RemoteFrame from './RemoteFrame';
+import * as log from 'loglevel';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded

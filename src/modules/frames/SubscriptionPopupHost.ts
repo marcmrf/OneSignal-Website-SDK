@@ -8,6 +8,7 @@ import TimeoutError from '../../errors/TimeoutError';
 import * as objectAssign from 'object-assign';
 import MainHelper from '../../helpers/MainHelper';
 import SdkEnvironment from '../../managers/SdkEnvironment';
+import * as log from 'loglevel';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main

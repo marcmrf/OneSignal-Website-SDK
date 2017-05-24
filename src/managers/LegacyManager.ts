@@ -21,7 +21,8 @@ export default class LegacyManager {
     }
   }
 
-  static iframePostmam(oneSignal) {
-    oneSignal.iframePostmam = OneSignal.proxyFrameHost;
+  static Postmams(oneSignal) {
+    oneSignal.iframePostmam = OneSignal.proxyFrame;
+    oneSignal.popupPostmam = OneSignal.subscriptionPopup;
   }
 }

@@ -12,7 +12,7 @@ test('should get service worker window environment', async t => {
   t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.ServiceWorker);
 });
 
-test.only('should get subscription popup window environment', async t => {
+test('should get subscription popup window environment', async t => {
   const browser = await TestEnvironment.stubDomEnvironment();
 
   // For legacy popup URL
@@ -34,7 +34,7 @@ test.only('should get subscription popup window environment', async t => {
   stub.restore();
 });
 
-test.only('should get host window environment', async t => {
+test('should get host window environment', async t => {
   const browser = await TestEnvironment.stubDomEnvironment();
 
   browser.changeURL(window, "https://site.com");
@@ -47,7 +47,7 @@ test.only('should get host window environment', async t => {
   t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.Host);
 });
 
-test.only('should get proxy frame window environment', async t => {
+test('should get proxy frame window environment', async t => {
   const browser = await TestEnvironment.stubDomEnvironment();
   browser.reconfigureWindow(window, { top: 'something else' as any });
 
@@ -58,7 +58,7 @@ test.only('should get proxy frame window environment', async t => {
   t.is(SdkEnvironment.getWindowEnv(), WindowEnvironmentKind.OneSignalSubscriptionModal);
 });
 
-test.only('should get custom iFrame window environment', async t => {
+test('should get custom iFrame window environment', async t => {
   const browser = await TestEnvironment.stubDomEnvironment();
   browser.reconfigureWindow(window, { top: 'something else' as any });
 

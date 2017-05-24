@@ -32,7 +32,7 @@ export default class HttpHelper {
   static async isShowingHttpPermissionRequest() {
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
       return await new Promise((resolve, reject) => {
-        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
+        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
           resolve(reply.data);
         });
       });

@@ -69,7 +69,7 @@ export default class MainHelper {
         return new Promise((resolve, reject) => {
           if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
             // User is using our subscription workaround
-            OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, {safariWebId: safariWebId}, reply => {
+            OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, {safariWebId: safariWebId}, reply => {
               let remoteNotificationPermission = reply.data;
               resolve(remoteNotificationPermission);
             });
@@ -364,8 +364,8 @@ export default class MainHelper {
     });
     OneSignal._channel.on('command.redirect', function handler(context, data) {
       log.debug(`${SdkEnvironment.getWindowEnv().toString()} Picked up command.redirect to ${data}, forwarding to host page.`);
-      if (OneSignal.proxyFrame) {
-        OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, data);
+      if (OneSignal.proxyFrameHost) {
+        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, data);
       }
     });
     OneSignal._channel.on('notification.dismissed', function handler(context, data) {

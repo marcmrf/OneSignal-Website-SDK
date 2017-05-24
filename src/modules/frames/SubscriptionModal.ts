@@ -18,6 +18,7 @@ import MainHelper from "../../helpers/MainHelper";
 import { SubscriptionPopupInitOptions } from "../../models/SubscriptionPopupInitOptions";
 import SubscriptionHelper from '../../helpers/SubscriptionHelper';
 import RemoteFrame from "./RemoteFrame";
+import * as log from 'loglevel';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded

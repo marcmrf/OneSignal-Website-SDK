@@ -19,6 +19,7 @@ import AltOriginManager from '../../managers/AltOriginManager';
 import { AppConfig } from '../../models/AppConfig';
 import { SubscriptionModalInitOptions } from '../../models/SubscriptionModalInitOptions';
 import SubscriptionHelper from '../../helpers/SubscriptionHelper';
+import * as log from 'loglevel';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded

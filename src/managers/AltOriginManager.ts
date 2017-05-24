@@ -6,6 +6,8 @@ import { InvalidStateError, InvalidStateReason } from '../errors/InvalidStateErr
 import OneSignalApi from '../OneSignalApi';
 import { Uuid } from '../models/Uuid';
 import Database from '../services/Database';
+import ProxyFrameHost from '../modules/frames/ProxyFrameHost';
+import { contains } from '../utils';
 
 export default class AltOriginManager {
 
@@ -13,17 +15,27 @@ export default class AltOriginManager {
 
   }
 
-  discoverAltOrigin() {
-
-  }
-
-  /**
-   * Saves into IndexedDb and returns the app config pulled from OneSignal.
-   */
-  static async queryAndSaveAppConfig(appId: Uuid) {
-    const config = await OneSignalApi.getAppConfig(appId);
-    await Database.setAppConfig(config);
-    return config;
+  static async discoverAltOrigin(appConfig): Promise<ProxyFrameHost> {
+    const iframeUrls = AltOriginManager.getOneSignalProxyIframeUrls(appConfig);
+    for (const iframeUrl of iframeUrls) {
+      const proxyFrameHost = new ProxyFrameHost(iframeUrl);
+      // A TimeoutError could happen here; it gets rejected out of this entire loop
+      await proxyFrameHost.load();
+      if (await proxyFrameHost.isSubscribed()) {
+        // If we're subscribed, we're done searching for the iframe
+        return proxyFrameHost;
+      } else {
+        if (contains(proxyFrameHost.url.host, '.os.tc')) {
+          // We've already loaded .onesignal.com and they're not subscribed
+          // There's no other frames to check; the user is completely not subscribed
+          return proxyFrameHost;
+        } else {
+          // We've just loaded .onesignal.com and they're not subscribed
+          // Load the .os.tc frame next to check
+          continue;
+        }
+      }
+    }
   }
 
   /**
@@ -47,15 +59,17 @@ export default class AltOriginManager {
                                      ): Array<URL> {
     let urls = [];
 
-    let legacyDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
-    legacyDomainUrl.host = [config.subdomain, legacyDomainUrl.host].join('.');
-    urls.push(legacyDomainUrl);
-
-    if (!config.useLegacyDomain) {
-      let osTcDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
-      osTcDomainUrl.host = [config.subdomain, 'os.tc'].join('.');
-      urls.push(osTcDomainUrl);
+    if (config.useLegacyDomain) {
+      let legacyDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
+      // Add subdomain.onesignal.com
+      legacyDomainUrl.host = [config.subdomain, legacyDomainUrl.host].join('.');
+      urls.push(legacyDomainUrl);
     }
+
+    let osTcDomainUrl = SdkEnvironment.getOneSignalApiUrl(buildEnv);
+    // Always add subdomain.os.tc
+    osTcDomainUrl.host = [config.subdomain, 'os.tc'].join('.');
+    urls.push(osTcDomainUrl);
 
     for (const url of urls) {
       url.pathname = '';
