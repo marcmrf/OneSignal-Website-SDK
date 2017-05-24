@@ -1,5 +1,4 @@
 import ProxyFrameHost from './modules/frames/ProxyFrameHost';
-import OneSignal from './OneSignal';
 import * as log from 'loglevel';
 import Environment from './Environment';
 import { getConsoleStyle, contains, capitalize } from './utils';
