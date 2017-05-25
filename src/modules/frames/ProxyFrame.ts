@@ -3,7 +3,7 @@ import { MessengerMessageEvent } from '../../models/MessengerMessageEvent';
 import Database from "../../services/Database";
 import Event from "../../Event";
 import EventHelper from "../../helpers/EventHelper";
-import { timeoutPromise, unsubscribeFromPush } from "../../utils";
+import { timeoutPromise, unsubscribeFromPush, isPushNotificationsSupported } from '../../utils';
 import TimeoutError from '../../errors/TimeoutError';
 import { ProxyFrameInitOptions } from '../../models/ProxyFrameInitOptions';
 import { Uuid } from '../../models/Uuid';
@@ -42,17 +42,21 @@ export default class ProxyFrame extends RemoteFrame {
   }
 
   establishCrossOriginMessaging() {
+    if (this.messenger) {
+      this.messenger.destroy();
+    }
     this.messenger = new Postmam(window, this.options.originUrl.origin, this.options.originUrl.origin);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.CONNECTED, this.onMessengerConnect);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.IFRAME_POPUP_INITIALIZE, this.onProxyFrameInitializing);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, this.onRemoteNotificationPermission);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_GET, this.onRemoteDatabaseGet);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_PUT, this.onRemoteDatabasePut);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_DATABASE_REMOVE, this.onRemoteDatabaseRemove);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.UNSUBSCRIBE_FROM_PUSH, this.onUnsubscribeFromPush);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, this.onShowHttpPermissionRequest);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed);
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.CONNECTED, this.onMessengerConnect.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.IFRAME_POPUP_INITIALIZE, this.onProxyFrameInitializing.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, this.onRemoteNotificationPermission.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_GET, this.onRemoteDatabaseGet.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_PUT, this.onRemoteDatabasePut.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_DATABASE_REMOVE, this.onRemoteDatabaseRemove.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.UNSUBSCRIBE_FROM_PUSH, this.onUnsubscribeFromPush.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.SHOW_HTTP_PERMISSION_REQUEST, this.onShowHttpPermissionRequest.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, this.onIsShowingHttpPermissionRequest.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.MARK_PROMPT_DISMISSED, this.onMarkPromptDismissed.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.IS_SUBSCRIBED, this.onIsSubscribed.bind(this));
     this.messenger.listen();
   }
 
@@ -188,6 +192,12 @@ export default class ProxyFrame extends RemoteFrame {
     log.debug('(Reposted from iFrame -> Host) Marking prompt as dismissed.');
     TestHelper.markHttpsNativePromptDismissed();
     message.reply(OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE);
+    return false;
+  }
+
+  async onIsSubscribed(message: MessengerMessageEvent) {
+    const isSubscribed = await OneSignal.isPushNotificationsEnabled();
+    message.reply(isSubscribed);
     return false;
   }
 }

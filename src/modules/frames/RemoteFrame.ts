@@ -55,7 +55,7 @@ export default class RemoteFrame implements Disposable {
     // OneSignal.config, assign the simple string versions
     const rasterizedOptions = objectAssign(this.options);
     rasterizedOptions.appId = rasterizedOptions.appId.value;
-    rasterizedOptions.origin = rasterizedOptions.origin.origin;
+    rasterizedOptions.origin = rasterizedOptions.originUrl.origin;
     OneSignal.config = rasterizedOptions || {};
     OneSignal.initialized = true;
 

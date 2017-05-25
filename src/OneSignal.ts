@@ -143,8 +143,7 @@ export default class OneSignal {
     ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
 
     if (OneSignal._initCalled) {
-      log.error(`OneSignal: Please don't call init() more than once. Any extra calls to init() are ignored. The following parameters were not processed: %c${JSON.stringify(Object.keys(options))}`, getConsoleStyle('code'));
-      return 'return';
+      throw new SdkInitError(SdkInitErrorKind.MultipleInitialization);
     }
     OneSignal._initCalled = true;
 
@@ -152,9 +151,10 @@ export default class OneSignal {
       path: '/'
     }, options);
 
-    let appConfig;
+    let appConfig: AppConfig;
     try {
       appConfig = await OneSignalApi.getAppConfig(new Uuid(options.appId));
+      log.debug(`Downloaded web push app config: %c${JSON.stringify(appConfig, null, 4)}`, getConsoleStyle('code'));
     } catch (e) {
       if (e && e.code === 2) {
         throw new SdkInitError(SdkInitErrorKind.AppNotConfiguredForWebPush);
@@ -164,7 +164,12 @@ export default class OneSignal {
     OneSignal.config.safari_web_id = appConfig.safariWebId;
 
     if (Browser.safari && !OneSignal.config.safari_web_id) {
-      log.warn("OneSignal: Required parameter %csafari_web_id", getConsoleStyle('code'), 'was not passed to OneSignal.init(), skipping SDK initialization.');
+      /**
+       * Don't throw an error for missing Safari config; many users set up
+       * support on Chrome/Firefox and don't intend to support Safari but don't
+       * place conditional initialization checks.
+       */
+      log.warn(new SdkInitError(SdkInitErrorKind.MissingSafariWebId));
       return;
     }
 
@@ -181,16 +186,26 @@ export default class OneSignal {
       OneSignal.on(OneSignal.EVENTS.SDK_INITIALIZED, InitHelper.onSdkInitialized);
 
       if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-        try {
-          OneSignal.appConfig = appConfig;
-          OneSignal.proxyFrameHost = await AltOriginManager.discoverAltOrigin(appConfig);
-        } catch (e) {
-          if (e) {
-            if (e instanceof TimeoutError) {
-              log.warn('Check the Site URL of your web push config on your onesignal.com dashboard. Only sites with that URL are allowed to use your subdomain.');
-            }
-          } else throw e;
+        OneSignal.appConfig = appConfig;
+
+        /**
+         * The user may have forgot to choose a subdomain in his web app setup.
+         *
+         * Or, the user may have an HTTP & HTTPS site while using an HTTPS-only
+         * config on both variants. This would cause the HTTPS site to work
+         * perfectly, while causing errors and preventing web push from working
+         * on the HTTP site.
+         */
+        if (!appConfig.subdomain) {
+          throw new SdkInitError(SdkInitErrorKind.MissingSubdomain);
         }
+        /**
+         * The iFrame may never load (e.g. OneSignal might be down), in which
+         * case the rest of the SDK's initialization will be blocked. This is a
+         * good thing! We don't want to access IndexedDb before we know which
+         * origin to store data on.
+         */
+        OneSignal.proxyFrameHost = await AltOriginManager.discoverAltOrigin(appConfig);
       }
 
       window.addEventListener('focus', (event) => {
@@ -882,7 +897,8 @@ export default class OneSignal {
     POPUP_BEGIN_MESSAGEPORT_COMMS: 'postmam.beginMessagePortComms',
     SERVICEWORKER_COMMAND_REDIRECT: 'postmam.command.redirect',
     HTTP_PERMISSION_REQUEST_RESUBSCRIBE: 'postmam.httpPermissionRequestResubscribe',
-    MARK_PROMPT_DISMISSED: 'postmam.markPromptDismissed'
+    MARK_PROMPT_DISMISSED: 'postmam.markPromptDismissed',
+    IS_SUBSCRIBED: 'postmam.isSubscribed'
   };
 
   static EVENTS = {

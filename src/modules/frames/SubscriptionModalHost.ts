@@ -104,10 +104,10 @@ export default class SubscriptionModalHost implements Disposable {
     this.messenger = new Postmam(this.modal, this.url.origin, this.url.origin);
     this.messenger.startPostMessageReceive();
 
-    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_LOADED, this.onModalLoaded);
-    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_ACCEPTED, this.onModalAccepted);
-    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_REJECTED, this.onModalRejected);
-    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_CLOSING, this.onModalClosing);
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_LOADED, this.onModalLoaded.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_ACCEPTED, this.onModalAccepted.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_REJECTED, this.onModalRejected.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_CLOSING, this.onModalClosing.bind(this));
   }
 
   onModalLoaded(message: MessengerMessageEvent) {

@@ -70,12 +70,11 @@ export default class SubscriptionPopupHost implements Disposable {
     this.popupWindow = this.openWindowViaPost(this.url.toString(), postData, overrides);
 
     this.establishCrossOriginMessaging();
-    (this as any).loadPromise = {
-      promise: new Promise((resolve, reject) => {
+    (this as any).loadPromise = {};
+    (this as any).loadPromise.promise = new Promise((resolve, reject) => {
         this.loadPromise.resolver = resolve;
         this.loadPromise.rejector = reject;
-      })
-    };
+    });
 
     // This can throw a TimeoutError, which should go up the stack
     return this.loadPromise.promise;
@@ -133,14 +132,14 @@ export default class SubscriptionPopupHost implements Disposable {
 
   establishCrossOriginMessaging() {
     this.messenger = new Postmam(this.popupWindow, this.url.toString(), this.url.toString());
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, this.onBeginMessagePortCommunications);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.POPUP_LOADED, this.onPopupLoaded);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.POPUP_ACCEPTED, this.onPopupAccepted);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.POPUP_REJECTED, this.onPopupRejected);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.POPUP_CLOSING, this.onPopupClosing);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.BEGIN_BROWSING_SESSION, this.onBeginBrowsingSession);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.WINDOW_TIMEOUT, this.onWindowTimeout);
-    this.messenger.once(OneSignal.POSTMAN_COMMANDS.FINISH_REMOTE_REGISTRATION, this.onFinishingRegistrationRemotely);
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, this.onBeginMessagePortCommunications.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_LOADED, this.onPopupLoaded.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_ACCEPTED, this.onPopupAccepted.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_REJECTED, this.onPopupRejected.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_CLOSING, this.onPopupClosing.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.BEGIN_BROWSING_SESSION, this.onBeginBrowsingSession.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.WINDOW_TIMEOUT, this.onWindowTimeout.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.FINISH_REMOTE_REGISTRATION, this.onFinishingRegistrationRemotely.bind(this));
     this.messenger.startPostMessageReceive();
   }
 
@@ -156,6 +155,7 @@ export default class SubscriptionPopupHost implements Disposable {
   }
 
   async onPopupLoaded(message: MessengerMessageEvent) {
+    this.loadPromise.resolver();
     Event.trigger('popupLoad');
   }
 

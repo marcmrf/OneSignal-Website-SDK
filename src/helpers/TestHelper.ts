@@ -60,7 +60,6 @@ export default class TestHelper {
       });
     }
     let dismissCount = await Database.get<number>('Options', 'promptDismissCount');
-    console.log(`(${SdkEnvironment.getWindowEnv().toString()}) dismissCount: ${dismissCount}`)
     if (!dismissCount) {
       dismissCount = 0;
     }

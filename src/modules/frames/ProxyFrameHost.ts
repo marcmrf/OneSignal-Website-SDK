@@ -49,7 +49,7 @@ export default class ProxyFrameHost implements Disposable {
    *
    * Rejects with a TimeoutError if the frame doesn't load within a specified time.
    */
-  load(): Promise<void> {
+  async load(): Promise<void> {
     /*
       This class removes existing iFrames with the same URL. This prevents
       multiple iFrames to the same origin, which can cause issues with
@@ -62,17 +62,22 @@ export default class ProxyFrameHost implements Disposable {
     iframe.style.display = "none";
     iframe.src = this.url.toString();
     (iframe as any).sandbox = 'allow-popups allow-popups-to-escape-sandbox allow-same-origin allow-scripts allow-top-navigation';
-    iframe.onload = this.onFrameLoad;
     (this as any).loadPromise = {};
-    (this as any).loadPromise = new Promise((resolve, reject) => {
+    (this as any).loadPromise.promise = new Promise((resolve, reject) => {
         this.loadPromise.resolver = resolve;
         this.loadPromise.rejector = reject;
     });
     document.body.appendChild(iframe);
+    iframe.onload = this.onFrameLoad.bind(this);
 
     this.element = iframe;
-    // This can throw a TimeoutError, which should go up the stack
-    return timeoutPromise(this.loadPromise.promise, ProxyFrameHost.LOAD_TIMEOUT_MS);
+    // Display a timeout warning if frame doesn't load in time, but don't prevent it from loading if the network is just slow
+    timeoutPromise(this.loadPromise.promise, ProxyFrameHost.LOAD_TIMEOUT_MS).catch(e => {
+      if (window === window.top) {
+        log.warn(`OneSignal: Loading the required iFrame ${this.url.toString()} timed out. Check that the Site URL onesignal.com dashboard web config is ${location.origin}. Only the Site URL specified there is allowed to use load the iFrame.`);
+      }
+    });
+    return this.loadPromise.promise;
   }
 
   removeFrame() {
@@ -83,18 +88,21 @@ export default class ProxyFrameHost implements Disposable {
   }
 
   onFrameLoad(e: UIEvent): void {
-    log.debug('iFrame at', this.url.toString(), 'finished loading (onload event).');
     this.establishCrossOriginMessaging();
   }
 
   establishCrossOriginMessaging() {
+    if (this.messenger) {
+      // Remove all previous events; window message events should not go to any previous listeners
+      this.messenger.destroy();
+    }
     this.messenger = new Postmam(this.element.contentWindow, this.url.toString(), this.url.toString());
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.CONNECTED, this.onMessengerConnect);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_RETRIGGER_EVENT, this.onRemoteRetriggerEvent);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, this.onRemoteNotificationPermissionChanged);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.REQUEST_HOST_URL, this.onRequestHostUrl);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, this.onServiceWorkerCommandRedirect);
-    this.messenger.on(OneSignal.POSTMAN_COMMANDS.HTTP_PERMISSION_REQUEST_RESUBSCRIBE, this.onHttpPermissionRequestResubscribe);
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.CONNECTED, this.onMessengerConnect.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, this.onRemoteRetriggerEvent.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION_CHANGED, this.onRemoteNotificationPermissionChanged.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.REQUEST_HOST_URL, this.onRequestHostUrl.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.SERVICEWORKER_COMMAND_REDIRECT, this.onServiceWorkerCommandRedirect.bind(this));
+    this.messenger.on(OneSignal.POSTMAM_COMMANDS.HTTP_PERMISSION_REQUEST_RESUBSCRIBE, this.onHttpPermissionRequestResubscribe.bind(this));
     this.messenger.connect();
   }
 
@@ -121,7 +129,9 @@ export default class ProxyFrameHost implements Disposable {
     }, reply => {
       if (reply.data === OneSignal.POSTMAM_COMMANDS.REMOTE_OPERATION_COMPLETE) {
         this.loadPromise.resolver();
-        Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
+        // This needs to be initialized so that isSubscribed() can be called to
+        // determine whethe rthe user is subscribed to Frame A or B
+        //Event.trigger(OneSignal.EVENTS.SDK_INITIALIZED);
       }
       return false;
     });
@@ -159,7 +169,11 @@ export default class ProxyFrameHost implements Disposable {
   }
 
   isSubscribed(): Promise<boolean> {
-    return OneSignal.isPushNotificationsEnabled();
+    return new Promise((resolve, reject) => {
+      this.messenger.message(OneSignal.POSTMAM_COMMANDS.IS_SUBSCRIBED, null, reply => {
+        resolve(reply.data);
+      });
+    });
   }
 
   /**

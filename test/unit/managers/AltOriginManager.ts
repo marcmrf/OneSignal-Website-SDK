@@ -97,7 +97,6 @@ test(`should discover alt origin to be subdomain.os.tc if user is not subscribed
   const stubLoad = sinon.stub(ProxyFrameHost.prototype, 'load').resolves(undefined);
   const stubIsSubscribed = sinon.stub(ProxyFrameHost.prototype, 'isSubscribed').callsFake(t.context.stubIsSubscribedToOsTcImpl);
 
-  debugger;
   const proxyFrame = await AltOriginManager.discoverAltOrigin(appConfig);
   t.is(proxyFrame.url.host, t.context.subdomainOsTcHost);
 

@@ -8,6 +8,7 @@ import { Uuid } from '../models/Uuid';
 import Database from '../services/Database';
 import ProxyFrameHost from '../modules/frames/ProxyFrameHost';
 import { contains } from '../utils';
+import * as log from 'loglevel';
 
 export default class AltOriginManager {
 
@@ -32,6 +33,9 @@ export default class AltOriginManager {
         } else {
           // We've just loaded .onesignal.com and they're not subscribed
           // Load the .os.tc frame next to check
+          // Remove the .onesignal.com frame; there's no need to keep it around anymore
+          log.debug(`Loaded ${proxyFrameHost.url.host} iFrame, but the user was not subscribed.`);
+          proxyFrameHost.dispose();
           continue;
         }
       }

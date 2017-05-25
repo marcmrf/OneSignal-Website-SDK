@@ -263,8 +263,12 @@ export function nothing(): Promise<any> {
   return Promise.resolve();
 }
 
-export async function timeoutPromise(promise: Promise<any>, milliseconds: number): Promise<TimeoutError | any> {
-  const timeoutPromise = new Promise(reject => setTimeout(() => reject(new TimeoutError()), milliseconds));
+export function timeoutPromise(promise: Promise<any>, milliseconds: number): Promise<TimeoutError | any> {
+  const timeoutPromise = new Promise((resolve, reject) => {
+    setTimeout(() => {
+      reject(new TimeoutError())
+    }, milliseconds);
+  });
   return Promise.race([promise, timeoutPromise]);
 }
 

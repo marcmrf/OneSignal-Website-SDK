@@ -56,7 +56,7 @@ export default class Postmam {
    * Opens a message event listener to listen for a Postmam handshake from another browsing context. This listener is closed as soon as the connection is established.
    */
   listen() {
-    log.trace('(Postmam) Called listen().');
+    log.debug('(Postmam) Called listen().');
     if (this.isListening) {
       log.debug('(Postmam) Already listening for Postmam connections.');
       return;
@@ -118,7 +118,7 @@ export default class Postmam {
   }
 
   onWindowMessagePostmanConnectReceived(e) {
-    log.trace(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Window postmessage for Postman connect received:`, e);
+    log.debug(`(Postmam) (${SdkEnvironment.getWindowEnv().toString()}) Window postmessage for Postman connect received:`, e);
     // Discard messages from unexpected origins; messages come frequently from other origins
     if (!this.isSafeOrigin(e.origin)) {
       // log.debug(`(Postmam) Discarding message because ${e.origin} is not an allowed origin:`, e.data)
