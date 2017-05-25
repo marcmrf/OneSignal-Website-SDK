@@ -7,6 +7,8 @@ export interface ProxyFrameInitOptions extends AppConfig {
    *
    * This is set on OneSignal's dashboard as the Site URL property and passed
    * in.
+   *
+   * This can be set to *.
    */
-  originUrl: URL
+  origin: string;
 }

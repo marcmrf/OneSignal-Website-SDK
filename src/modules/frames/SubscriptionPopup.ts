@@ -61,7 +61,7 @@ export default class SubscriptionPopup extends RemoteFrame {
   }
 
   establishCrossOriginMessaging() {
-    this.messenger = new Postmam(window.opener, this.options.originUrl.origin, this.options.originUrl.origin);
+    this.messenger = new Postmam(window.opener, this.options.origin, this.options.origin);
     this.messenger.once(OneSignal.POSTMAM_COMMANDS.CONNECTED, this.onMessengerConnected.bind(this));
     // The host page will receive this event, and then call connect()
     this.messenger.postMessage(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, null);

@@ -6,7 +6,6 @@ import SdkEnvironment from "./managers/SdkEnvironment";
 import { WindowEnvironmentKind } from './models/WindowEnvironmentKind';
 
 
-
 const SILENT_EVENTS = [
   'notifyButtonHovering',
   'notifyButtonHover',

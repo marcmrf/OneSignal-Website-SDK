@@ -20,6 +20,7 @@ import { AppConfig } from '../../models/AppConfig';
 import { SubscriptionModalInitOptions } from '../../models/SubscriptionModalInitOptions';
 import SubscriptionHelper from '../../helpers/SubscriptionHelper';
 import * as log from 'loglevel';
+import { BuildEnvironmentKind } from '../../models/BuildEnvironmentKind';
 
 /**
  * The actual OneSignal proxy frame contents / implementation, that is loaded
@@ -54,9 +55,9 @@ export default class SubscriptionModalHost implements Disposable {
   async load(): Promise<void> {
     const isPushEnabled = await OneSignal.isPushNotificationsEnabled();
     const notificationPermission = await OneSignal.getNotificationPermission();
-    this.url = AltOriginManager.getCanonicalSubscriptionUrls(new AppConfig())[0];
+    this.url = SdkEnvironment.getOneSignalApiUrl();
     this.url.pathname = 'webPushModal';
-    this.url.search = `${MainHelper.getPromptOptionsQueryString()}&id=${this.options.appId}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
+    this.url.search = `${MainHelper.getPromptOptionsQueryString()}&id=${this.options.appId.value}&httpsPrompt=true&pushEnabled=${isPushEnabled}&permissionBlocked=${(notificationPermission as any) === 'denied'}&promptType=modal`;
     log.info(`Loading iFrame for HTTPS subscription modal at ${this.url.toString()}`);
 
     this.modal = this.createHiddenSubscriptionDomModal(this.url.toString());
@@ -89,7 +90,7 @@ export default class SubscriptionModalHost implements Disposable {
   }
 
   removeFrame() {
-    const existingInstance = document.querySelector(`iFrame[src='${this.url.toString()}'`);
+    const existingInstance = document.querySelector('#OneSignal-iframe-modal');
     if (existingInstance) {
       existingInstance.remove();
     }
@@ -104,7 +105,7 @@ export default class SubscriptionModalHost implements Disposable {
     this.messenger = new Postmam(this.modal, this.url.origin, this.url.origin);
     this.messenger.startPostMessageReceive();
 
-    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_LOADED, this.onModalLoaded.bind(this));
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_LOADED, this.onModalLoaded.bind(this));
     this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_ACCEPTED, this.onModalAccepted.bind(this));
     this.messenger.once(OneSignal.POSTMAM_COMMANDS.MODAL_PROMPT_REJECTED, this.onModalRejected.bind(this));
     this.messenger.once(OneSignal.POSTMAM_COMMANDS.POPUP_CLOSING, this.onModalClosing.bind(this));

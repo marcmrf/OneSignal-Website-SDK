@@ -26,7 +26,7 @@ export default class RemoteFrame implements Disposable {
     this.options = {
       appId: new Uuid(initOptions.appId),
       subdomain: initOptions.subdomainName,
-      originUrl: new URL(initOptions.origin)
+      origin: initOptions.origin
     };
   }
 
@@ -55,7 +55,7 @@ export default class RemoteFrame implements Disposable {
     // OneSignal.config, assign the simple string versions
     const rasterizedOptions = objectAssign(this.options);
     rasterizedOptions.appId = rasterizedOptions.appId.value;
-    rasterizedOptions.origin = rasterizedOptions.originUrl.origin;
+    rasterizedOptions.origin = rasterizedOptions.origin;
     OneSignal.config = rasterizedOptions || {};
     OneSignal.initialized = true;
 
@@ -84,12 +84,5 @@ export default class RemoteFrame implements Disposable {
     } else {
       window.close();
     }
-  }
-
-  /**
-   * Shortcut method to messenger.message().
-   */
-  public message(...args) {
-    this.messenger.message.apply(this.messenger, arguments);
   }
 }

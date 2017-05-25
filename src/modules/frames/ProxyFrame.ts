@@ -45,7 +45,7 @@ export default class ProxyFrame extends RemoteFrame {
     if (this.messenger) {
       this.messenger.destroy();
     }
-    this.messenger = new Postmam(window, this.options.originUrl.origin, this.options.originUrl.origin);
+    this.messenger = new Postmam(window, this.options.origin, this.options.origin);
     this.messenger.on(OneSignal.POSTMAM_COMMANDS.CONNECTED, this.onMessengerConnect.bind(this));
     this.messenger.on(OneSignal.POSTMAM_COMMANDS.IFRAME_POPUP_INITIALIZE, this.onProxyFrameInitializing.bind(this));
     this.messenger.on(OneSignal.POSTMAM_COMMANDS.REMOTE_NOTIFICATION_PERMISSION, this.onRemoteNotificationPermission.bind(this));

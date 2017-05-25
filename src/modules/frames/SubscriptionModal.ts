@@ -32,6 +32,6 @@ export default class SubscriptionModal extends RemoteFrame {
   }
 
   establishCrossOriginMessaging() {
-    this.messenger = new Postmam(window.parent, this.options.originUrl.origin, this.options.originUrl.origin);
+    this.messenger = new Postmam(window.parent, this.options.origin, this.options.origin);
   }
 }

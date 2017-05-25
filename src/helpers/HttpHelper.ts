@@ -65,6 +65,11 @@ export default class HttpHelper {
       case WindowEnvironmentKind.OneSignalSubscriptionModal:
         OneSignal.subscriptionModal = new SubscriptionModal(options);
         await OneSignal.subscriptionModal.initialize();
+        /**
+         * Our Rails-side subscription popup/modal depends on
+         * OneSignal.iframePostmam, OneSignal.popupPostmam, and
+         * OneSignal.modalPostmam, which don't exist anymore.
+         */
         LegacyManager.ensureBackwardsCompatibility(OneSignal);
         Event.trigger('httpInitialize');
         break;
