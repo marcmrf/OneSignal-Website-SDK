@@ -27,6 +27,14 @@ import * as log from 'loglevel';
  */
 export default class SubscriptionPopup extends RemoteFrame {
 
+  // Promise to track whether the popup has finished connecting back to the host
+  // page
+  private loadPromise: {
+    promise: Promise<void>,
+    resolver: Function,
+    rejector: Function
+  }
+
   constructor(initOptions: any) {
     super(initOptions);
   }
@@ -42,12 +50,26 @@ export default class SubscriptionPopup extends RemoteFrame {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  // initialize(); <-- Implemented by base class RemoteFrame
+  initialize() {
+    super.initialize();
+    (this as any).loadPromise = {};
+    (this as any).loadPromise.promise = new Promise((resolve, reject) => {
+        this.loadPromise.resolver = resolve;
+        this.loadPromise.rejector = reject;
+    });
+    return this.loadPromise.promise;
+  }
 
   establishCrossOriginMessaging() {
     this.messenger = new Postmam(window.opener, this.options.originUrl.origin, this.options.originUrl.origin);
+    this.messenger.once(OneSignal.POSTMAM_COMMANDS.CONNECTED, this.onMessengerConnected.bind(this));
     // The host page will receive this event, and then call connect()
     this.messenger.postMessage(OneSignal.POSTMAM_COMMANDS.POPUP_BEGIN_MESSAGEPORT_COMMS, null);
     this.messenger.listen();
+  }
+
+  onMessengerConnected(message: MessengerMessageEvent) {
+    log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) The host page is now ready to receive commands from the HTTP popup.`);
+    this.loadPromise.resolver();
   }
 }

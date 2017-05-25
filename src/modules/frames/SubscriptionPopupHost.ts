@@ -194,10 +194,6 @@ export default class SubscriptionPopupHost implements Disposable {
     EventHelper.checkAndTriggerSubscriptionChanged();
   }
 
-  isSubscribed() {
-
-  }
-
   /**
    * Shortcut method to messenger.message().
    */

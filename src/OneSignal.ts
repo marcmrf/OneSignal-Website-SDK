@@ -358,6 +358,7 @@ export default class OneSignal {
            * is finally subscribed to .onesignal.com or .os.tc.
            */
         OneSignal.subscriptionPopupHost = new SubscriptionPopupHost(OneSignal.proxyFrameHost.url, options);
+        OneSignal.subscriptionPopupHost.load();
       } else {
         if (!options)
           options = {};

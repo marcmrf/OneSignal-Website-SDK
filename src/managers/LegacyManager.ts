@@ -8,6 +8,7 @@ import { WindowEnvironmentKind } from '../models/WindowEnvironmentKind';
 export default class LegacyManager {
   static ensureBackwardsCompatibility(oneSignal) {
     LegacyManager.environmentPolyfill(oneSignal);
+    LegacyManager.postmams(oneSignal);
   }
 
   static environmentPolyfill(oneSignal) {
@@ -21,8 +22,12 @@ export default class LegacyManager {
     }
   }
 
-  static Postmams(oneSignal) {
-    oneSignal.iframePostmam = OneSignal.proxyFrame;
-    oneSignal.popupPostmam = OneSignal.subscriptionPopup;
+  static postmams(oneSignal) {
+    if (oneSignal.proxyFrame) {
+      oneSignal.iframePostmam = oneSignal.proxyFrame;
+    }
+    if (oneSignal.subscriptionPopup) {
+      oneSignal.popupPostmam = oneSignal.subscriptionPopup;
+    }
   }
 }

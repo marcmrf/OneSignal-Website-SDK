@@ -23,6 +23,7 @@ import AltOriginManager from '../managers/AltOriginManager';
 import SubscriptionModal from '../modules/frames/SubscriptionModal';
 import SubscriptionPopup from "../modules/frames/SubscriptionPopup";
 import ProxyFrame from "../modules/frames/ProxyFrame";
+import LegacyManager from '../managers/LegacyManager';
 
 declare var OneSignal: any;
 
@@ -42,7 +43,7 @@ export default class HttpHelper {
   }
 
   // Http only - Only called from iframe's init.js
-  static initHttp(options) {
+  static async initHttp(options) {
     log.debug(`Called %cinitHttp(${JSON.stringify(options, null, 4)})`, getConsoleStyle('code'));
 
     switch (SdkEnvironment.getWindowEnv()) {
@@ -52,11 +53,23 @@ export default class HttpHelper {
         break;
       case WindowEnvironmentKind.OneSignalSubscriptionPopup:
         OneSignal.subscriptionPopup = new SubscriptionPopup(options);
-        OneSignal.subscriptionPopup.initialize();
+        await OneSignal.subscriptionPopup.initialize();
+        /**
+         * Our Rails-side subscription popup/modal depends on
+         * OneSignal.iframePostmam, OneSignal.popupPostmam, and
+         * OneSignal.modalPostmam, which don't exist anymore.
+         */
+        LegacyManager.ensureBackwardsCompatibility(OneSignal);
+        Event.trigger('httpInitialize');
         break;
       case WindowEnvironmentKind.OneSignalSubscriptionModal:
         OneSignal.subscriptionModal = new SubscriptionModal(options);
-        OneSignal.subscriptionModal.initialize();
+        await OneSignal.subscriptionModal.initialize();
+        LegacyManager.ensureBackwardsCompatibility(OneSignal);
+        Event.trigger('httpInitialize');
+        break;
+      default:
+        log.error("Unsupported HTTP initialization branch.");
         break;
     }
   }
