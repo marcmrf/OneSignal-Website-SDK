@@ -32,11 +32,7 @@ export default class HttpHelper {
 
   static async isShowingHttpPermissionRequest() {
     if (SubscriptionHelper.isUsingSubscriptionWorkaround()) {
-      return await new Promise((resolve, reject) => {
-        OneSignal.proxyFrameHost.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
-          resolve(reply.data);
-        });
-      });
+      return await OneSignal.proxyFrameHost.isShowingHttpPermissionRequest();
     } else {
       return OneSignal._showingHttpPermissionRequest;
     }
@@ -49,7 +45,13 @@ export default class HttpHelper {
     switch (SdkEnvironment.getWindowEnv()) {
       case WindowEnvironmentKind.OneSignalProxyFrame:
         OneSignal.proxyFrame = new ProxyFrame(options);
-        OneSignal.proxyFrame.initialize();
+        await OneSignal.proxyFrame.initialize();
+        /**
+         * Our Rails-side subscription popup/modal depends on
+         * OneSignal.iframePostmam, OneSignal.popupPostmam, and
+         * OneSignal.modalPostmam, which don't exist anymore.
+         */
+        LegacyManager.ensureBackwardsCompatibility(OneSignal);
         break;
       case WindowEnvironmentKind.OneSignalSubscriptionPopup:
         OneSignal.subscriptionPopup = new SubscriptionPopup(options);
@@ -64,7 +66,9 @@ export default class HttpHelper {
         break;
       case WindowEnvironmentKind.OneSignalSubscriptionModal:
         OneSignal.subscriptionModal = new SubscriptionModal(options);
-        await OneSignal.subscriptionModal.initialize();
+        // Do not await on modal initialization; the modal uses direct
+        // postmessage and does not establish a "connection" to wait on
+        OneSignal.subscriptionModal.initialize();
         /**
          * Our Rails-side subscription popup/modal depends on
          * OneSignal.iframePostmam, OneSignal.popupPostmam, and

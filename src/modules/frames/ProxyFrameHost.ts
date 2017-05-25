@@ -6,6 +6,7 @@ import EventHelper from "../../helpers/EventHelper";
 import { timeoutPromise } from "../../utils";
 import TimeoutError from '../../errors/TimeoutError';
 import * as log from 'loglevel';
+import { NotificationPermission } from '../../models/NotificationPermission';
 
 /**
  * Manager for an instance of the OneSignal proxy frame, for use from the main
@@ -110,6 +111,14 @@ export default class ProxyFrameHost implements Disposable {
     // Removes all events
     this.messenger.destroy();
     this.removeFrame();
+  }
+
+  async isShowingHttpPermissionRequest(): Promise<boolean> {
+    return new Promise<boolean>(resolve => {
+      this.messenger.message(OneSignal.POSTMAM_COMMANDS.IS_SHOWING_HTTP_PERMISSION_REQUEST, null, reply => {
+        resolve(reply.data);
+      });
+    });
   }
 
   async onMessengerConnect(e: MessengerMessageEvent) {

@@ -105,7 +105,7 @@ export default class Event {
           if (SdkEnvironment.getWindowEnv() === WindowEnvironmentKind.OneSignalSubscriptionPopup) {
             OneSignal.subscriptionPopup.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
           } else {
-            OneSignal.proxyFrame.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName: eventName, eventData: data});
+            OneSignal.proxyFrame.retriggerRemoteEvent(eventName, data);
           }
         }
       }

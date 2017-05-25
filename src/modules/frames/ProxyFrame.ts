@@ -36,9 +36,10 @@ export default class ProxyFrame extends RemoteFrame {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  initialize(): void {
-    super.initialize();
+  initialize(): Promise<void> {
+    const promise = super.initialize();
     Event.trigger('httpInitialize');
+    return promise;
   }
 
   establishCrossOriginMessaging() {
@@ -60,8 +61,13 @@ export default class ProxyFrame extends RemoteFrame {
     this.messenger.listen();
   }
 
+  retriggerRemoteEvent(eventName: string, eventData: any) {
+    this.messenger.message(OneSignal.POSTMAM_COMMANDS.REMOTE_RETRIGGER_EVENT, {eventName, eventData});
+  }
+
   async onMessengerConnect(message: MessengerMessageEvent) {
     log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) Successfully established cross-origin communication.`);
+    this.finishInitialization();
     return false;
   }
 
@@ -169,7 +175,7 @@ export default class ProxyFrame extends RemoteFrame {
     if (message.data) {
       options = message.data;
     }
-    log.debug(SdkEnvironment.getWindowEnv().toString() + 'HTTP permission request showing, message data:', message);
+    log.debug(`${SdkEnvironment.getWindowEnv().toString()} HTTP permission request showing, message data:`, message);
     try {
       const result = await OneSignal.showHttpPermissionRequest(options);
       message.reply({ status: 'resolve', result: result });

@@ -22,6 +22,14 @@ export default class RemoteFrame implements Disposable {
   protected messenger: Postmam;
   protected options: ProxyFrameInitOptions;
 
+  // Promise to track whether connecting back to the host
+  // page has finished
+  private loadPromise: {
+    promise: Promise<void>,
+    resolver: Function,
+    rejector: Function
+  }
+
   constructor(initOptions: any) {
     this.options = {
       appId: new Uuid(initOptions.appId),
@@ -41,7 +49,7 @@ export default class RemoteFrame implements Disposable {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  initialize(): void {
+  initialize(): Promise<void> {
     ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
 
     const creator = window.opener || window.parent;
@@ -59,7 +67,14 @@ export default class RemoteFrame implements Disposable {
     OneSignal.config = rasterizedOptions || {};
     OneSignal.initialized = true;
 
+    (this as any).loadPromise = {};
+    (this as any).loadPromise.promise = new Promise((resolve, reject) => {
+        this.loadPromise.resolver = resolve;
+        this.loadPromise.rejector = reject;
+    });
+
     this.establishCrossOriginMessaging();
+    return this.loadPromise.promise;
   }
 
   establishCrossOriginMessaging(): void {
@@ -69,6 +84,10 @@ export default class RemoteFrame implements Disposable {
   dispose(): void {
     // Removes all events
     this.messenger.destroy();
+  }
+
+  protected finishInitialization() {
+    this.loadPromise.resolver();
   }
 
   async subscribe() {

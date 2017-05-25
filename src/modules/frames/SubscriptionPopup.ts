@@ -27,14 +27,6 @@ import * as log from 'loglevel';
  */
 export default class SubscriptionPopup extends RemoteFrame {
 
-  // Promise to track whether the popup has finished connecting back to the host
-  // page
-  private loadPromise: {
-    promise: Promise<void>,
-    resolver: Function,
-    rejector: Function
-  }
-
   constructor(initOptions: any) {
     super(initOptions);
   }
@@ -50,15 +42,7 @@ export default class SubscriptionPopup extends RemoteFrame {
    * There is no load timeout here; the iFrame initializes it scripts and waits
    * forever for the first handshake message.
    */
-  initialize() {
-    super.initialize();
-    (this as any).loadPromise = {};
-    (this as any).loadPromise.promise = new Promise((resolve, reject) => {
-        this.loadPromise.resolver = resolve;
-        this.loadPromise.rejector = reject;
-    });
-    return this.loadPromise.promise;
-  }
+   // initialize() is implemented by base RemoteFrame class
 
   establishCrossOriginMessaging() {
     this.messenger = new Postmam(window.opener, this.options.origin, this.options.origin);
@@ -70,6 +54,6 @@ export default class SubscriptionPopup extends RemoteFrame {
 
   onMessengerConnected(message: MessengerMessageEvent) {
     log.debug(`(${SdkEnvironment.getWindowEnv().toString()}) The host page is now ready to receive commands from the HTTP popup.`);
-    this.loadPromise.resolver();
+    this.finishInitialization();
   }
 }
