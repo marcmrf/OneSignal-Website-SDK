@@ -22,6 +22,7 @@ import AltOriginManager from "../managers/AltOriginManager";
 import { AppConfig } from "../models/AppConfig";
 import SubscriptionModalHost from '../modules/frames/SubscriptionModalHost';
 import * as objectAssign from 'object-assign';
+import CookieSyncer from '../modules/CookieSyncer';
 
 declare var OneSignal: any;
 
@@ -118,6 +119,7 @@ export default class InitHelper {
     }
 
     MainHelper.checkAndDoHttpPermissionRequest();
+    new CookieSyncer().install();
   }
 
   static installNativePromptPermissionChangedHook() {
