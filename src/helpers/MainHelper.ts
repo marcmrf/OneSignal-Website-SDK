@@ -291,11 +291,11 @@ export default class MainHelper {
 
   static getPrefixedServiceWorkerNameForEnv() {
     if (Environment.isDev()) {
-      OneSignal.SERVICE_WORKER_PATH = DEV_PREFIX + OneSignal.SERVICE_WORKER_PATH;
-      OneSignal.SERVICE_WORKER_UPDATER_PATH = DEV_PREFIX + OneSignal.SERVICE_WORKER_UPDATER_PATH;
+      OneSignal.config.serviceWorkerConfig.workerName = DEV_PREFIX + OneSignal.config.serviceWorkerConfig.workerName;
+      OneSignal.config.serviceWorkerConfig.updaterWorkerName = DEV_PREFIX + OneSignal.config.serviceWorkerConfig.updaterWorkerName;
     } else if (Environment.isStaging()) {
-      OneSignal.SERVICE_WORKER_PATH = STAGING_PREFIX + OneSignal.SERVICE_WORKER_PATH;
-      OneSignal.SERVICE_WORKER_UPDATER_PATH = STAGING_PREFIX + OneSignal.SERVICE_WORKER_UPDATER_PATH;
+      OneSignal.config.serviceWorkerConfig.workerName = STAGING_PREFIX + OneSignal.config.serviceWorkerConfig.workerName;
+      OneSignal.config.serviceWorkerConfig.updaterWorkerName = STAGING_PREFIX + OneSignal.config.serviceWorkerConfig.updaterWorkerName;
     }
   }
 

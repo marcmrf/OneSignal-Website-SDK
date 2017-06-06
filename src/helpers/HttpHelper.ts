@@ -232,7 +232,7 @@ must be opened as a result of a subscription call.</span>`);
     // Do not register OneSignalSDKUpdaterWorker.js for HTTP popup sites; the file does not exist
     OneSignal.isPushNotificationsEnabled(isEnabled => {
       if (!isEnabled) {
-        navigator.serviceWorker.register(OneSignal.SERVICE_WORKER_PATH, OneSignal.SERVICE_WORKER_PARAM).then(SubscriptionHelper.enableNotifications, ServiceWorkerHelper.registerError);
+        navigator.serviceWorker.register(OneSignal.config.serviceWorkerConfig.workerName, OneSignal.SERVICE_WORKER_PARAM).then(SubscriptionHelper.enableNotifications, ServiceWorkerHelper.registerError);
       } else {
         window.close();
       }

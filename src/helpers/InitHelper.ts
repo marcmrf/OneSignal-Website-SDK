@@ -131,7 +131,7 @@ export default class InitHelper {
     if (OneSignal.config.persistNotification === false) {
       opPromises.push(Database.put('Options', {key: 'persistNotification', value: false}));
     } else {
-      opPromises.push(Database.put('Options', {key: 'persistNotification', value: true}));
+    opPromises.push(Database.put('Options', {key: 'persistNotification', value: true}));
     }
 
     let webhookOptions = OneSignal.config.webhooks;
@@ -171,6 +171,11 @@ export default class InitHelper {
     } else {
       opPromises.push(Database.put('Options', {key: 'serviceWorkerRefetchRequests', value: true}));
     }
+
+    opPromises.push(Database.setAppConfig({
+      serviceWorkerConfig: OneSignal.config.serviceWorkerConfig
+    }));
+
     return Promise.all(opPromises);
   }
 

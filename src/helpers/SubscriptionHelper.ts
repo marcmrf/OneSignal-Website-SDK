@@ -24,40 +24,40 @@ export default class SubscriptionHelper {
                            sw_path = OneSignal.config.path;
 
                          if (typeof serviceWorkerRegistration === "undefined") // Nothing registered, very first run
-                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                          else {
                            if (serviceWorkerRegistration.active) {
                              let previousWorkerUrl = serviceWorkerRegistration.active.scriptURL;
-                             if (contains(previousWorkerUrl, sw_path + OneSignal.SERVICE_WORKER_PATH)) {
+                             if (contains(previousWorkerUrl, sw_path + OneSignal.config.serviceWorkerConfig.workerName)) {
                                // OneSignalSDKWorker.js was installed
                                Database.get('Ids', 'WORKER1_ONE_SIGNAL_SW_VERSION')
                                        .then(function (version) {
                                          if (version) {
                                            if (version != OneSignal._VERSION) {
                                              log.info(`Installing new service worker (${version} -> ${OneSignal._VERSION})`);
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_UPDATER_PATH);
+                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.updaterWorkerName);
                                            }
                                            else
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                                          }
                                          else
-                                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_UPDATER_PATH);
+                                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.updaterWorkerName);
                                        });
                              }
-                             else if (contains(previousWorkerUrl, sw_path + OneSignal.SERVICE_WORKER_UPDATER_PATH)) {
+                             else if (contains(previousWorkerUrl, sw_path + OneSignal.config.serviceWorkerConfig.updaterWorkerName)) {
                                // OneSignalSDKUpdaterWorker.js was installed
                                Database.get('Ids', 'WORKER2_ONE_SIGNAL_SW_VERSION')
                                        .then(function (version) {
                                          if (version) {
                                            if (version != OneSignal._VERSION) {
                                              log.info(`Installing new service worker (${version} -> ${OneSignal._VERSION})`);
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                                            }
                                            else
-                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_UPDATER_PATH);
+                                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.updaterWorkerName);
                                          }
                                          else
-                                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                                           ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                                        });
                              } else {
                                // Some other service worker not belonging to us was installed
@@ -65,12 +65,12 @@ export default class SubscriptionHelper {
                                log.info('Unregistering previous service worker:', serviceWorkerRegistration);
                                serviceWorkerRegistration.unregister().then(unregistrationSuccessful => {
                                  log.info('Result of unregistering:', unregistrationSuccessful);
-                                 ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                                 ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                                });
                              }
                            }
                            else if (serviceWorkerRegistration.installing == null)
-                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.SERVICE_WORKER_PATH);
+                             ServiceWorkerHelper.registerServiceWorker(sw_path + OneSignal.config.serviceWorkerConfig.workerName);
                          }
                        });
                      }

@@ -126,6 +126,18 @@ export default class OneSignal {
   static init(options) {
     logMethodCall('init', options);
 
+    var defaultPath = '/';
+
+    OneSignal.config = objectAssign({
+      path: defaultPath,
+      serviceWorkerConfig: {
+        workerName: OneSignal.SERVICE_WORKER_PATH,
+        updaterWorkerName: OneSignal.SERVICE_WORKER_UPDATER_PATH,
+        scope: OneSignal.SERVICE_WORKER_PARAM.scope,
+        workerFilePath: options.path || defaultPath
+      }
+    }, options);
+
     ServiceWorkerHelper.applyServiceWorkerEnvPrefixes();
 
     if (OneSignal._initCalled) {
@@ -133,10 +145,6 @@ export default class OneSignal {
       return 'return';
     }
     OneSignal._initCalled = true;
-
-    OneSignal.config = objectAssign({
-      path: '/'
-    }, options);
 
     if (Browser.safari && !OneSignal.config.safari_web_id) {
       log.warn("OneSignal: Required parameter %csafari_web_id", getConsoleStyle('code'), 'was not passed to OneSignal.init(), skipping SDK initialization.');
